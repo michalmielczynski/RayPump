@@ -1,0 +1,1 @@
+Win x64 build is for testing only. 32-bit version works well enough to keep it official.

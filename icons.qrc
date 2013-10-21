@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>icons/logo_off.png</file>
+        <file>icons/logo_on.png</file>
+        <file>icons/logo_small.png</file>
+        <file>icons/logo_small.ico</file>
+        <file>icons/logo_small_off.ico</file>
+        <file>icons/logo_small_glow.ico</file>
+        <file>icons/reload.png</file>
+        <file>icons/RayPump.ico</file>
+    </qresource>
+</RCC>
