@@ -47,7 +47,7 @@ static bool rmDir(const QString &dirPath)
     return parentDir.rmdir(QFileInfo(dirPath).fileName());
 }
 
-static bool clearDir(const QString &dirPath)
+static inline bool clearDir(const QString &dirPath)
 {
     QDir dir(dirPath);
     if (!dir.exists())
@@ -64,7 +64,7 @@ static bool clearDir(const QString &dirPath)
     return true;
 }
 
-static bool cpDir(const QString &srcPath, const QString &dstPath)
+static inline bool cpDir(const QString &srcPath, const QString &dstPath)
 {
     rmDir(dstPath);
     QDir parentDstDir(QFileInfo(dstPath).path());

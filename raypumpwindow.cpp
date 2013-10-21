@@ -44,7 +44,7 @@ void RayPumpWindow::run()
     setWindowTitle("TEST VERSION");
 #endif
 #if defined(Q_OS_MAC)
-    ui->menuBar->setNativeMenuBar(false);
+    ui->menuBar->setNativeMenuBar(true);
 #endif
     ui->progressBar->hide();
     ui->progressBarRender->hide();
@@ -235,25 +235,9 @@ void RayPumpWindow::handleRsyncRendersFinished(bool success)
 
     }
     else if (m_downloadTryCounter > 3){
-        switch (success){
-        case 5:
-            ui->statusBar->showMessage(tr("Download auth failed"));
-            uERROR << "rsync auth failed";
-            break;
-        case 23:
-            ui->statusBar->showMessage(tr("No renders available"));
-            m_status = tr("No renders available");
-            uINFO << "no files to rsync";
-            break;
-        case 14:
-            uERROR << "error in rsync protocol data stream (code 12) - connection unexpectedly closed";
-            break;
-        default:
-            ui->statusBar->showMessage(tr("Download failed"));
-            m_status = tr("Download failed");
-            uERROR << "failed to download renders";
-            break;
-        }
+        ui->statusBar->showMessage(tr("Download failed"));
+        m_status = tr("Download failed");
+        uERROR << "failed to download renders";
     }
     else{
         m_downloadTryCounter++;
