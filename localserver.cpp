@@ -56,8 +56,7 @@ void LocalServer::acceptConnection()
     connect(m_tcpServerConnection, SIGNAL(readyRead()), SLOT(handleMessage()));
     connect(m_tcpServerConnection, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(handleConnectionError(QAbstractSocket::SocketError)));
 
-    QDir path(".");
-    m_tcpServerConnection->write((path.absolutePath() + "/" + G_BUFFER_DIRECTORY + "\n").toLatin1());
+    m_tcpServerConnection->write((Globals::BUFFER_DIRECTORY + "\n").toLatin1());    ///@TODO: support unicode paths
 
     QVariantMap map;
     map.insert("CONNECTED", true);
@@ -74,6 +73,10 @@ void LocalServer::handleMessage()
 
 void LocalServer::handleConnectionError(QAbstractSocket::SocketError error)
 {
+    QVariantMap map;
+    map.insert("DISCONNECTED", true);
+    emit messageReceived(QtJson::serialize(map));
+
     if (error == QTcpSocket::RemoteHostClosedError){
         uINFO << "client disconnected";
         return;

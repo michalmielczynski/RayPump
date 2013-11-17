@@ -22,6 +22,8 @@ struct Globals{
     static bool SERVER_VIRTUALIZED;
     static QString SERVER_HOST_NAME;
     static QString SERVER_IP;
+    static QString BUFFER_DIRECTORY;
+    static QString RENDERS_DIRECTORY;
 
 };
 

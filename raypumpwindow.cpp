@@ -22,7 +22,6 @@
 #include "raypumpwindow.h"
 #include "ui_raypumpwindow.h"
 
-
 RayPumpWindow::RayPumpWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::RayPumpWindow)
@@ -42,6 +41,7 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     ui->progressBar->setMinimum(0);
     ui->progressBar->setMaximum(0);
     ui->actionConnect->setProperty("force", false);
+    ui->pushButtonRenderPath->setText("Change renders directory (" + Globals::RENDERS_DIRECTORY + ")");
     setupLicenseAgreement();
 
     setupTrayIcon();
@@ -70,7 +70,6 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     setWindowFlags(flags);
 #endif
     assertSynchroDirectories();
-    cleanUpBufferFolder(G_BUFFER_DIRECTORY);
 
     m_status = tr("Not connected");
     m_currentJob.clear();
@@ -155,6 +154,11 @@ void RayPumpWindow::handleLocalMessage(const QByteArray &message)
             m_trayIcon->showMessage("RayPump", tr("Blender connected"));
             m_status = tr("Blender connected");
             on_actionShow_triggered();
+        }
+        else if (key == "DISCONNECTED"){
+            ui->statusBar->showMessage(tr("Blender disconnected"));
+            m_trayIcon->showMessage("RayPump", tr("Blender disconnected"));
+            m_status = tr("Blender disconnected");
         }
         else if (key == "FORMAT"){
             /// @deprecated everything above RayPump Free uses Scene's output format
@@ -682,8 +686,6 @@ bool RayPumpWindow::transferScene(const QFileInfo &sceneFileInfo)
     arg["job_type"] = m_currentJob.jobType;
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_SCENE_PREPARE, arg);
 
-    removeNoBlendFiles(G_BUFFER_DIRECTORY);
-
     QStringList env = QProcess::systemEnvironment();
     env << "RSYNC_PASSWORD=" + m_remoteClient->accessHash();
 
@@ -691,11 +693,11 @@ bool RayPumpWindow::transferScene(const QFileInfo &sceneFileInfo)
 
 #ifdef Q_OS_WIN
     if (!m_jobManager->uploadLimit()){
-        arguments << "--progress" << "-zr" << G_BUFFER_DIRECTORY << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text();
+        arguments << "--progress" << "-z" << "--compress-level=9" << Globals::BUFFER_DIRECTORY + "/" + sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
     }
     else{
         uINFO << "limiting upload to" << m_jobManager->uploadLimit() << "KB/s";
-        arguments << "--progress" << "-zr" << QString("--bwlimit=%1").arg(m_jobManager->uploadLimit())  << G_BUFFER_DIRECTORY << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text();
+        arguments << "--progress" << "-z" << "--compress-level=9" << QString("--bwlimit=%1").arg(m_jobManager->uploadLimit())  << Globals::BUFFER_DIRECTORY + "/" + sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
     }
 #else
     if (Globals::SERVER_VIRTUALIZED){
@@ -704,10 +706,10 @@ bool RayPumpWindow::transferScene(const QFileInfo &sceneFileInfo)
             uERROR << "cannot get IP address for" << Globals::SERVER_HOST_NAME;
             return false;
         }
-        arguments << "--progress" << "-zr" << G_BUFFER_DIRECTORY << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_HOST_NAME + "/share/" + ui->lineEditUserName->text();
+        arguments << "--progress" << "-z" << "--compress-level=9" << Globals::BUFFER_DIRECTORY + "/" + sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_HOST_NAME + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
     }
     else{
-        arguments << "--progress" << "-zr" << G_BUFFER_DIRECTORY << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text();
+        arguments << "--progress" << "-z" << "--compress-level=9" << Globals::BUFFER_DIRECTORY + "/" + sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
     }
 #endif
 
@@ -747,8 +749,8 @@ void RayPumpWindow::transferRenders()
     m_rsyncRendersProcess->setEnvironment(env);
 
     QStringList arguments;
-    //arguments << "--exclude=*.blend" << "-r" << "rsync://" + ui->lineEditUserName->text() + "@" + G_SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << G_RENDERS_DIRECTORY + "/";
-    //arguments << "--exclude=*.blend" << "-r" << "rsync://" + ui->lineEditUserName->text() + "@" + G_SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << G_RENDERS_DIRECTORY + "/";
+    //arguments << "--exclude=*.blend" << "-r" << "rsync://" + ui->lineEditUserName->text() + "@" + G_SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << Globals::RENDERS_DIRECTORY + "/";
+    //arguments << "--exclude=*.blend" << "-r" << "rsync://" + ui->lineEditUserName->text() + "@" + G_SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << Globals::RENDERS_DIRECTORY + "/";
 
 //    arguments  "--no-p" << "--no-g" << "--chmod=ugo=rwX" ;
 //    m_rsyncRendersProcess->start(m_rsyncFilePath.absoluteFilePath(), arguments);
@@ -758,7 +760,7 @@ void RayPumpWindow::transferRenders()
 
 //    arguments.clear();
 
-    arguments << "--progress" << "--perms"  << "--exclude=*.blend" << "-zr" << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << G_RENDERS_DIRECTORY + "/";
+    arguments << "--progress" << "--perms"  << "--exclude=*.blend" << "-zr" << "--compress-level=9" << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << Globals::RENDERS_DIRECTORY + "/";
 
 
     m_rsyncRendersProcess->start(m_rsyncFilePath.absoluteFilePath(), arguments);
@@ -852,37 +854,14 @@ void RayPumpWindow::handleRenderPointsChanged(int renderPoints)
 
 void RayPumpWindow::assertSynchroDirectories()
 {
-    QDir path(".");
+    QDir path(QDir::homePath());
 
-    if (!path.exists(G_BUFFER_DIRECTORY)){
-        if (!path.mkdir(G_BUFFER_DIRECTORY)){
-            QMessageBox::warning(this, tr("RayPump failed"), tr("Failed to create buffer directory. Check write-access in RayPump folder"));
+    if (!path.mkpath(Globals::RENDERS_DIRECTORY)){
+        QMessageBox::critical(0, "RayPump failed", "Failed to create renders directory " + Globals::RENDERS_DIRECTORY);
+        Globals::RENDERS_DIRECTORY = "RayPump";
+        if (!path.mkpath(Globals::RENDERS_DIRECTORY)){   //if the specified directory isn't avaliable, use <Home>/RayPump
+            QMessageBox::critical(0, "RayPump failed", "Failed to create directory");
             exit(EXIT_FAILURE);
-        }
-        else{
-            uINFO << "buffer directory created";
-        }
-    }
-
-    if (!path.exists(G_RENDERS_DIRECTORY)){
-        if (!path.mkdir(G_RENDERS_DIRECTORY)){
-            QMessageBox::warning(this, tr("RayPump failed"), tr("Failed to create renders directory. Check write-access in RayPump folder"));
-            exit(EXIT_FAILURE);
-        }
-        else{
-            uINFO << "renders directory created";
-        }
-    }
-}
-
-void RayPumpWindow::removeNoBlendFiles(const QString &directory)
-{
-    QDir dir(directory);
-
-    foreach(QFileInfo file, dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot)){
-        if (file.suffix() != "blend"){
-            uINFO << "removing file" << file.fileName();
-            QFile::remove(file.absoluteFilePath());
         }
     }
 }
@@ -891,7 +870,7 @@ void RayPumpWindow::removeNoBlendFiles(const QString &directory)
 void RayPumpWindow::setRenderFilesPermission()
 {
 
-    QDir renderPath(G_RENDERS_DIRECTORY);
+    QDir renderPath(Globals::RENDERS_DIRECTORY);
     if (!renderPath.exists()){
         uERROR << "cannot find RENDERS directory. Aborting...";
         return;
@@ -906,17 +885,6 @@ void RayPumpWindow::setRenderFilesPermission()
 //                              );
     }
 
-}
-
-void RayPumpWindow::cleanUpBufferFolder(const QString &directory)
-{
-    QDir dir(directory);
-
-    foreach(QFileInfo file, dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot)){
-        if (!dir.remove(file.fileName())){
-            uERROR << "cannot remove file" << file.fileName();
-        }
-    }
 }
 
 void RayPumpWindow::calculateJobTime(const QString &sceneName)
@@ -961,36 +929,36 @@ void RayPumpWindow::openRenderFolder(const QString &subfolderName)
 {
 #ifdef Q_OS_MAC
     if (subfolderName.isEmpty()){
-        QUrl rendersPathUrl("./"+G_RENDERS_DIRECTORY);
+        QUrl rendersPathUrl(Globals::RENDERS_DIRECTORY);
         rendersPathUrl.setScheme("file");
         QDesktopServices::openUrl(rendersPathUrl);
     }
     else{
-        QUrl rendersPathUrl("./"+G_RENDERS_DIRECTORY +"/"+subfolderName);
+        QUrl rendersPathUrl(Globals::RENDERS_DIRECTORY +"/"+subfolderName);
         rendersPathUrl.setScheme("file");
         QDesktopServices::openUrl(rendersPathUrl);
     }
 
 #elif defined(Q_OS_WIN)
     if (subfolderName.isEmpty()){
-        if (!QDesktopServices::openUrl(G_RENDERS_DIRECTORY)){
-            ui->statusBar->showMessage(tr("Failed to open %1").arg(G_RENDERS_DIRECTORY));
+        if (!QDesktopServices::openUrl(Globals::RENDERS_DIRECTORY)){
+            ui->statusBar->showMessage(tr("Failed to open %1").arg(Globals::RENDERS_DIRECTORY));
         }
     }
     else{
-        if (!QDesktopServices::openUrl(G_RENDERS_DIRECTORY + "\\" + subfolderName)){
-            ui->statusBar->showMessage(tr("Failed to open %1").arg(G_RENDERS_DIRECTORY + "\\" + subfolderName));
+        if (!QDesktopServices::openUrl(Globals::RENDERS_DIRECTORY + "\\" + subfolderName)){
+            ui->statusBar->showMessage(tr("Failed to open %1").arg(Globals::RENDERS_DIRECTORY + "\\" + subfolderName));
         }
     }
 #elif defined(Q_OS_LINUX)
     if (subfolderName.isEmpty()){
-        if (!QDesktopServices::openUrl(G_RENDERS_DIRECTORY)){
-            ui->statusBar->showMessage(tr("Failed to open %1").arg(G_RENDERS_DIRECTORY));
+        if (!QDesktopServices::openUrl(Globals::RENDERS_DIRECTORY)){
+            ui->statusBar->showMessage(tr("Failed to open %1").arg(Globals::RENDERS_DIRECTORY));
         }
     }
     else{
-        if (!QDesktopServices::openUrl(G_RENDERS_DIRECTORY + "/" + subfolderName)){
-            ui->statusBar->showMessage(tr("Failed to open %1").arg(G_RENDERS_DIRECTORY + "/" + subfolderName));
+        if (!QDesktopServices::openUrl(Globals::RENDERS_DIRECTORY + "/" + subfolderName)){
+            ui->statusBar->showMessage(tr("Failed to open %1").arg(Globals::RENDERS_DIRECTORY + "/" + subfolderName));
         }
     }
 #endif    
@@ -1175,7 +1143,6 @@ void RayPumpWindow::on_actionCancel_uploading_triggered()
     }
 
     m_rsyncSceneProcess->kill();
-    cleanUpBufferFolder(G_BUFFER_DIRECTORY);
 }
 
 void RayPumpWindow::on_tableWidget_cellDoubleClicked(int row, int column)
@@ -1248,4 +1215,17 @@ void RayPumpWindow::on_pushButtonCancelJob_clicked()
     args.insert("job_name", jobsList);
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_CANCELJOB, args);
     on_actionCancel_uploading_triggered();
+}
+
+void RayPumpWindow::on_pushButtonRenderPath_clicked()
+{
+    QFileDialog dialog(this);
+    dialog.setFileMode(QFileDialog::Directory);
+    dialog.setOption(QFileDialog::ShowDirsOnly, true);
+    QString newPath = dialog.getExistingDirectory(this, tr("Choose directory"), Globals::RENDERS_DIRECTORY, QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+    if (newPath != "")
+        Globals::RENDERS_DIRECTORY = newPath;
+    QSettings settings;
+    settings.setValue("renders_directory", Globals::RENDERS_DIRECTORY);
+    ui->pushButtonRenderPath->setText("Change renders directory (" + Globals::RENDERS_DIRECTORY + ")");
 }

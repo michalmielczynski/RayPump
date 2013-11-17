@@ -20,28 +20,48 @@
  */
 
 #include "application.h"
+#include "commoncode.h"
 
 Application::Application(int &argc, char **argv):QApplication(argc, argv)
 {
-    _singular = new QSharedMemory("RayPumpUniqueName", this);
 }
 
 Application::~Application()
 {
-    if(_singular->isAttached())
-        _singular->detach();
+    delete _singular;   //lock is released and file is deleted when the object is destroyed
+    QDir dir(Globals::BUFFER_DIRECTORY);
+    dir.removeRecursively();
 }
 
-/// @todo  this method has been reported as buggy. We should reimplement more reliable way to manange singleton process
 bool Application::lock()
 {
-    if(_singular->attach(QSharedMemory::ReadOnly)){
-        _singular->detach();
-        return false;
+    /* Create a local buffer for each user.
+     * Qt has no standard way of getting the user name, so we read from the environment.
+     * Some windows versions use the same temporary folder for all users, some have individual ones,
+     * so using the usename might be unneeded under some systems.
+     * The lock file will be placed inside the temporary directory.
+     */
+
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    QString username;
+#ifdef Q_OS_WIN
+    username = env.value("USERNAME");
+#else
+    username = env.value("USER");
+#endif
+
+    QDir path(QDir::homePath());
+    Globals::BUFFER_DIRECTORY = path.tempPath() + "/raypump-" + username;
+
+    if (!path.mkpath(Globals::BUFFER_DIRECTORY)){
+        QMessageBox::critical(0, "RayPump failed", "Failed to create buffer directory" + Globals::BUFFER_DIRECTORY);
+        exit(EXIT_FAILURE);
     }
 
-    if(_singular->create(1))
-        return true;
+    QSettings settings;
+    Globals::RENDERS_DIRECTORY = path.absoluteFilePath(settings.value("renders_directory", "RayPump").toString());
 
-    return false;
+    _singular = new QLockFile(Globals::BUFFER_DIRECTORY + "/raypump_lock");
+
+    return _singular->tryLock(0);
 }

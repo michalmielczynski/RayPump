@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>838</width>
+    <width>842</width>
     <height>583</height>
    </rect>
   </property>
@@ -248,6 +248,13 @@
          <column/>
         </widget>
        </item>
+       <item>
+        <widget class="QPushButton" name="pushButtonRenderPath">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>
@@ -330,8 +337,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>838</width>
-     <height>21</height>
+     <width>842</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="nativeMenuBar">

@@ -18,6 +18,7 @@
 #include <QCryptographicHash>
 #include <QSettings>
 #include <QHostInfo>
+#include <QFileDialog>
 
 #include "localserver.h"
 #include "remoteclient.h"
@@ -48,6 +49,10 @@
  * - running the RayPump client should be initialized from Blender panel to avoid application switching
  * - path of the RayPump binary can be set (and stored) in Blender settings.
  *
+ *5)
+ * Support usage by multiple users
+ * - Opening RayPump inside one user and launching blener inside another creates a successful
+ *   connection, but Linux doesn't allow sending data between them
  */
 
 namespace Ui {
@@ -126,6 +131,7 @@ private slots:
     void on_groupBoxAdvancedMode_toggled(bool toggled);
 
     void on_pushButtonCancelJob_clicked();
+    void on_pushButtonRenderPath_clicked();
 
 private:
     void setupTrayIcon();
@@ -136,9 +142,7 @@ private:
     void setupJobManager();
     bool transferScene(const QFileInfo &sceneFileInfo);
     void assertSynchroDirectories();
-    void removeNoBlendFiles(const QString &directory);
     void setRenderFilesPermission();
-    void cleanUpBufferFolder(const QString &directory);
     void calculateJobTime(const QString &sceneName);
     bool checkMalformedUsername(const QString &userName);
     void openRenderFolder(const QString &subfolderName = "");

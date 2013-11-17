@@ -3,6 +3,11 @@
 
 #include <QApplication>
 #include <QSharedMemory>
+#include <QLockFile>
+#include <QProcessEnvironment>
+#include <QDir>
+#include <QMessageBox>
+#include <QSettings>
 
 class Application : public QApplication
 {
@@ -14,7 +19,7 @@ public:
     bool lock();
 
 private:
-    QSharedMemory *_singular;
+    QLockFile *_singular;
 };
 
 #endif // APPLICATION_H
