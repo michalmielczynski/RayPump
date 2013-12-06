@@ -173,21 +173,3 @@ void RemoteClient::handleError(QAbstractSocket::SocketError error)
     uERROR << "socket error" << error << m_tcpSocket->errorString();
     emit connected(false, m_tcpSocket->errorString());
 }
-
-void RemoteClient::setupDatabase()
-{
-    uINFO << "connecting...";
-    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setHostName("mysql5.hti.pl");
-    db.setDatabaseName("raypump");
-    db.setUserName("raypump");
-    db.setPassword("W5GKHY97rAcVMYJG");
-    bool ok = db.open();
-
-    if (ok){
-        uINFO << "DB CONNECTED";
-    }
-    else{
-        uERROR << "CANNOT CONNECT DB";
-    }
-}

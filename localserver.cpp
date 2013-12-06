@@ -56,7 +56,7 @@ void LocalServer::acceptConnection()
     connect(m_tcpServerConnection, SIGNAL(readyRead()), SLOT(handleMessage()));
     connect(m_tcpServerConnection, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(handleConnectionError(QAbstractSocket::SocketError)));
 
-    m_tcpServerConnection->write((Globals::BUFFER_DIRECTORY + "\n").toLatin1());    ///@TODO: support unicode paths
+    m_tcpServerConnection->write((Globals::BUFFER_DIRECTORY + "\n").toLatin1());
 
     QVariantMap map;
     map.insert("CONNECTED", true);

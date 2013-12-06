@@ -786,7 +786,7 @@ void RayPumpWindow::handleRenderProgressChanged(int progress, int total)
         //ui->statusBar->showMessage(tr("Awaiting resources..."));
     }
     else{
-           ui->statusBar->showMessage(tr("Pumping rays..."));
+        ui->statusBar->showMessage(tr("Pumping rays..."));
     }
 
 }
@@ -927,41 +927,27 @@ bool RayPumpWindow::checkMalformedUsername(const QString &userName)
 
 void RayPumpWindow::openRenderFolder(const QString &subfolderName)
 {
-#ifdef Q_OS_MAC
     if (subfolderName.isEmpty()){
-        QUrl rendersPathUrl(Globals::RENDERS_DIRECTORY);
-        rendersPathUrl.setScheme("file");
-        QDesktopServices::openUrl(rendersPathUrl);
-    }
-    else{
-        QUrl rendersPathUrl(Globals::RENDERS_DIRECTORY +"/"+subfolderName);
-        rendersPathUrl.setScheme("file");
-        QDesktopServices::openUrl(rendersPathUrl);
-    }
-
-#elif defined(Q_OS_WIN)
-    if (subfolderName.isEmpty()){
-        if (!QDesktopServices::openUrl(Globals::RENDERS_DIRECTORY)){
+        /// @todo: We shouldn't need to check the existence of the directory, only the return value from openUrl(),
+        /// but current Qt returns always true (https://bugreports.qt-project.org/browse/QTBUG-21137).
+        /// Let's change the code when Qt gets fixed.
+        if (!QDir(Globals::RENDERS_DIRECTORY).exists()) {
+            ui->statusBar->showMessage(tr("Directory %1 doesn't exist").arg(Globals::RENDERS_DIRECTORY));
+            return;
+        }
+        if (!QDesktopServices::openUrl("file://" + Globals::RENDERS_DIRECTORY)){
             ui->statusBar->showMessage(tr("Failed to open %1").arg(Globals::RENDERS_DIRECTORY));
         }
     }
     else{
-        if (!QDesktopServices::openUrl(Globals::RENDERS_DIRECTORY + "\\" + subfolderName)){
-            ui->statusBar->showMessage(tr("Failed to open %1").arg(Globals::RENDERS_DIRECTORY + "\\" + subfolderName));
+        if (!QDir(subfolderName).exists()){
+            ui->statusBar->showMessage(tr("Directory %1 doesn't exist").arg(subfolderName));
+            return;
+        }
+        if (!QDesktopServices::openUrl("file://" + subfolderName)){
+            ui->statusBar->showMessage(tr("Failed to open %1").arg(subfolderName));
         }
     }
-#elif defined(Q_OS_LINUX)
-    if (subfolderName.isEmpty()){
-        if (!QDesktopServices::openUrl(Globals::RENDERS_DIRECTORY)){
-            ui->statusBar->showMessage(tr("Failed to open %1").arg(Globals::RENDERS_DIRECTORY));
-        }
-    }
-    else{
-        if (!QDesktopServices::openUrl(Globals::RENDERS_DIRECTORY + "/" + subfolderName)){
-            ui->statusBar->showMessage(tr("Failed to open %1").arg(Globals::RENDERS_DIRECTORY + "/" + subfolderName));
-        }
-    }
-#endif    
 
     ui->statusBar->showMessage(tr("Opening folder..."));
     m_trayIcon->setIcon(QIcon(":/icons/icons/logo_small.ico"));

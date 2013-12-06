@@ -4,7 +4,6 @@
 #include <QObject>
 #include <QTcpSocket>
 #include <QDataStream>
-#include <QtSql/QSqlDatabase>
 #include <QHostInfo>
 
 #include "commoncode.h"
