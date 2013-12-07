@@ -121,6 +121,9 @@
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
           <widget class="QPushButton" name="pushButtonRefresh">
+           <property name="toolTip">
+            <string>Refresh jobs data</string>
+           </property>
            <property name="text">
             <string>Refresh</string>
            </property>
@@ -128,6 +131,9 @@
          </item>
          <item>
           <widget class="QPushButton" name="pushButtonCleanUp">
+           <property name="toolTip">
+            <string>Clear table (won't remove jobs from the disk)</string>
+           </property>
            <property name="text">
             <string>Cleanup</string>
            </property>
@@ -250,6 +256,9 @@
        </item>
        <item>
         <widget class="QPushButton" name="pushButtonRenderPath">
+         <property name="toolTip">
+          <string>Choose output folder for finished jobs</string>
+         </property>
          <property name="text">
           <string/>
          </property>
