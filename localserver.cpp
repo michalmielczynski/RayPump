@@ -48,6 +48,11 @@ void LocalServer::confirmSceneScheduled(bool successful)
     }
 }
 
+void LocalServer::sendRetry()
+{
+    m_tcpServerConnection->write("RETRY\n");
+}
+
 void LocalServer::acceptConnection()
 {
     uINFO << "client connected";

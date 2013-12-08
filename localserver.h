@@ -17,6 +17,7 @@ public:
     explicit LocalServer(QObject *parent = 0);
     bool start();
     void confirmSceneScheduled(bool successful);
+    void sendRetry();
     
 signals:
     void messageReceived(const QByteArray &message);

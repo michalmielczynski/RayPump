@@ -147,7 +147,11 @@ void RayPumpWindow::handleLocalMessage(const QByteArray &message)
 
     foreach (QString key, map.keys()){
         if (key == "SCHEDULE"){
-            m_localServer->confirmSceneScheduled(transferScene(map.value(key).toString()));
+            if (m_remoteClient->accessHash() == ""){
+                uINFO << "Received job disconnected to the server";
+                m_localServer->sendRetry();
+            } else
+                m_localServer->confirmSceneScheduled(transferScene(map.value(key).toString()));
         }
         else if (key == "CONNECTED"){
             ui->statusBar->showMessage(tr("Blender connected"));
@@ -1134,6 +1138,7 @@ void RayPumpWindow::on_actionCancel_uploading_triggered()
 void RayPumpWindow::on_tableWidget_cellDoubleClicked(int row, int column)
 {
     Q_UNUSED(column);
+    /// @FIXME: try to open only if the job has already ended
     openRenderFolder(ui->tableWidget->item(row, 0)->data(IR_JOB_PATH).toString());
 }
 
