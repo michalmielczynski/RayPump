@@ -255,14 +255,37 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButtonRenderPath">
-         <property name="toolTip">
-          <string>Choose output folder for finished jobs</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <item>
+          <widget class="QPushButton" name="pushButtonRenderPath">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>Choose output folder for finished jobs</string>
+           </property>
+           <property name="text">
+            <string>Renders folder</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButtonOpenRenderFolder">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Open</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>
@@ -347,7 +370,7 @@
      <x>0</x>
      <y>0</y>
      <width>842</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -521,5 +544,22 @@ padding: 0px;</string>
  <resources>
   <include location="icons.qrc"/>
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>pushButtonOpenRenderFolder</sender>
+   <signal>clicked()</signal>
+   <receiver>actionFolder</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>785</x>
+     <y>447</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

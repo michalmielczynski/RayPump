@@ -9,7 +9,7 @@
 #include <QPushButton>
 #include <QMessageBox>
 
-#include <commoncode.h>
+#include "commoncode.h"
 
 class JobManager : public QObject
 {

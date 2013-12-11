@@ -41,7 +41,7 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     ui->progressBar->setMinimum(0);
     ui->progressBar->setMaximum(0);
     ui->actionConnect->setProperty("force", false);
-    ui->pushButtonRenderPath->setText("Change renders directory (" + Globals::RENDERS_DIRECTORY + ")");
+    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
     setupLicenseAgreement();
 
     setupTrayIcon();
@@ -696,9 +696,12 @@ bool RayPumpWindow::transferScene(const QFileInfo &sceneFileInfo)
     QStringList arguments;
 
 #ifdef Q_OS_WIN
+
     if (!m_jobManager->uploadLimit()){
-        arguments << "--progress" << "-z" << "--compress-level=9" << Globals::BUFFER_DIRECTORY + "/" + sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
+        arguments << "--progress" << "-z" << "--compress-level=9" << sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
+        uINFO << arguments;
     }
+    /// @todo unused
     else{
         uINFO << "limiting upload to" << m_jobManager->uploadLimit() << "KB/s";
         arguments << "--progress" << "-z" << "--compress-level=9" << QString("--bwlimit=%1").arg(m_jobManager->uploadLimit())  << Globals::BUFFER_DIRECTORY + "/" + sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
@@ -720,6 +723,7 @@ bool RayPumpWindow::transferScene(const QFileInfo &sceneFileInfo)
     m_rsyncTimer.start();
     m_totalJobTimer.start();
     m_rsyncSceneProcess->setEnvironment(env);
+    m_rsyncSceneProcess->setWorkingDirectory(Globals::BUFFER_DIRECTORY);
     m_rsyncSceneProcess->start(m_rsyncFilePath.absoluteFilePath(), arguments);
     if (!m_rsyncSceneProcess->waitForStarted()){
         uERROR << "failed to start rsync process for scene";
@@ -751,21 +755,10 @@ void RayPumpWindow::transferRenders()
     QStringList env = QProcess::systemEnvironment();
     env << "RSYNC_PASSWORD=" + m_remoteClient->accessHash();
     m_rsyncRendersProcess->setEnvironment(env);
+    m_rsyncRendersProcess->setWorkingDirectory(Globals::RENDERS_DIRECTORY);
 
     QStringList arguments;
-    //arguments << "--exclude=*.blend" << "-r" << "rsync://" + ui->lineEditUserName->text() + "@" + G_SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << Globals::RENDERS_DIRECTORY + "/";
-    //arguments << "--exclude=*.blend" << "-r" << "rsync://" + ui->lineEditUserName->text() + "@" + G_SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << Globals::RENDERS_DIRECTORY + "/";
-
-//    arguments  "--no-p" << "--no-g" << "--chmod=ugo=rwX" ;
-//    m_rsyncRendersProcess->start(m_rsyncFilePath.absoluteFilePath(), arguments);
-//    if (!m_rsyncRendersProcess->waitForStarted()){
-//        uWARNING << "failed to setr sync";
-//    }
-
-//    arguments.clear();
-
-    arguments << "--progress" << "--perms"  << "--exclude=*.blend" << "-zr" << "--compress-level=9" << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << Globals::RENDERS_DIRECTORY + "/";
-
+    arguments << "--progress" << "--perms"  << "--exclude=*.blend" << "-zr" << "--compress-level=9" << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << "./";
 
     m_rsyncRendersProcess->start(m_rsyncFilePath.absoluteFilePath(), arguments);
     if (!m_rsyncRendersProcess->waitForStarted()){
@@ -931,30 +924,28 @@ bool RayPumpWindow::checkMalformedUsername(const QString &userName)
 
 void RayPumpWindow::openRenderFolder(const QString &subfolderName)
 {
-    if (subfolderName.isEmpty()){
-        /// @todo: We shouldn't need to check the existence of the directory, only the return value from openUrl(),
-        /// but current Qt returns always true (https://bugreports.qt-project.org/browse/QTBUG-21137).
-        /// Let's change the code when Qt gets fixed.
-        if (!QDir(Globals::RENDERS_DIRECTORY).exists()) {
-            ui->statusBar->showMessage(tr("Directory %1 doesn't exist").arg(Globals::RENDERS_DIRECTORY));
-            return;
-        }
-        if (!QDesktopServices::openUrl("file://" + Globals::RENDERS_DIRECTORY)){
-            ui->statusBar->showMessage(tr("Failed to open %1").arg(Globals::RENDERS_DIRECTORY));
-        }
-    }
-    else{
-        if (!QDir(subfolderName).exists()){
-            ui->statusBar->showMessage(tr("Directory %1 doesn't exist").arg(subfolderName));
-            return;
-        }
-        if (!QDesktopServices::openUrl("file://" + subfolderName)){
-            ui->statusBar->showMessage(tr("Failed to open %1").arg(subfolderName));
-        }
+    QString path = Globals::RENDERS_DIRECTORY;
+    m_trayIcon->setIcon(QIcon(":/icons/icons/logo_small.ico"));
+
+    if (!subfolderName.isEmpty()){
+        path += "/" + subfolderName;
     }
 
-    ui->statusBar->showMessage(tr("Opening folder..."));
-    m_trayIcon->setIcon(QIcon(":/icons/icons/logo_small.ico"));
+    if (!QDir(path).exists()){
+        ui->statusBar->showMessage(tr("Directory %1 doesn't exist").arg(path));
+        return;
+    }
+#ifdef Q_OS_WIN
+    if (!QDesktopServices::openUrl("file:///" + path)){
+#else
+    if (!QDesktopServices::openUrl("file://" + path)){
+#endif
+        ui->statusBar->showMessage(tr("Failed to open %1").arg(path));
+        uERROR << path << "failed to work with desktop services";
+    }
+    else{
+        ui->statusBar->showMessage(tr("Opening folder %1").arg(path));
+    }
 }
 
 void RayPumpWindow::setJobType(const QString &jobTypeString)
@@ -1138,7 +1129,7 @@ void RayPumpWindow::on_actionCancel_uploading_triggered()
 void RayPumpWindow::on_tableWidget_cellDoubleClicked(int row, int column)
 {
     Q_UNUSED(column);
-    /// @FIXME: try to open only if the job has already ended
+    /// @todo: open only if the job has already ended
     openRenderFolder(ui->tableWidget->item(row, 0)->data(IR_JOB_PATH).toString());
 }
 
@@ -1218,5 +1209,5 @@ void RayPumpWindow::on_pushButtonRenderPath_clicked()
         Globals::RENDERS_DIRECTORY = newPath;
     QSettings settings;
     settings.setValue("renders_directory", Globals::RENDERS_DIRECTORY);
-    ui->pushButtonRenderPath->setText("Change renders directory (" + Globals::RENDERS_DIRECTORY + ")");
+    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
 }

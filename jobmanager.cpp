@@ -59,7 +59,7 @@ void JobManager::setJobs(const QVariantMap &jobs)
         m_tableJobs->insertRow(rowCount);
 
         QTableWidgetItem * item = new QTableWidgetItem(i.key());
-        item->setData(IR_JOB_PATH, Globals::RENDERS_DIRECTORY + "/" + path);
+        item->setData(IR_JOB_PATH, path);
         m_tableJobs->setItem(rowCount, 0, item);
 
         QTableWidgetItem *itemState = new QTableWidgetItem(state);

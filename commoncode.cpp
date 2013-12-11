@@ -19,7 +19,7 @@
  * official policies, either expressed or implied, of Michal Mielczynski.
  */
 
-#include <commoncode.h>
+#include "commoncode.h"
 
 bool Globals::SERVER_VIRTUALIZED = false;
 QString Globals::SERVER_HOST_NAME  = "ec2-54-202-0-207.us-west-2.compute.amazonaws.com"; // used only if Globals::SERVER_VIRTUALIZED is true
