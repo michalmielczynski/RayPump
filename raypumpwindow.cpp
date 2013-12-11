@@ -924,12 +924,15 @@ bool RayPumpWindow::checkMalformedUsername(const QString &userName)
 
 void RayPumpWindow::openRenderFolder(const QString &subfolderName)
 {
-    QString path = Globals::RENDERS_DIRECTORY;
     m_trayIcon->setIcon(QIcon(":/icons/icons/logo_small.ico"));
 
-    if (!subfolderName.isEmpty()){
-        path += "/" + subfolderName;
-    }
+    QString path;
+    if (subfolderName.isEmpty())
+        path = Globals::RENDERS_DIRECTORY;
+    else if (QDir(subfolderName).isAbsolute())
+        path = subfolderName;
+    else
+        path = Globals::RENDERS_DIRECTORY + subfolderName;
 
     if (!QDir(path).exists()){
         ui->statusBar->showMessage(tr("Directory %1 doesn't exist").arg(path));
