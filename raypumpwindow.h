@@ -98,7 +98,7 @@ private slots:
     void handleRsyncSceneFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void handleRsyncRendersFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void handleConnectionStatus(bool connected, const QString &msg);
-    void handleRayPumpCommand(CommandCode command, const QVariant &arg);
+    void handleRayPumpCommand(CommandCode command, const QVariantMap &arg);
     void handleSceneReady(const QString &sceneName);
     void handleTrayIconClicked(QSystemTrayIcon::ActivationReason reason);
     void handleTrayIconMessageClicked();

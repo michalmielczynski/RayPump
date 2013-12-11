@@ -30,9 +30,9 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     m_simpleCryptKey = 1365559412; //:)
 
     ui->setupUi(this);
-//#ifndef QT_NO_DEBUG
-//    setWindowTitle("TEST VERSION");
-//#endif
+#ifndef QT_NO_DEBUG
+    setWindowTitle("TEST VERSION");
+#endif
 #if defined(Q_OS_MAC)
     ui->menuBar->setNativeMenuBar(false);
 #endif
@@ -42,8 +42,8 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     ui->progressBar->setMaximum(0);
     ui->actionConnect->setProperty("force", false);
     ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
-    setupLicenseAgreement();
 
+    setupLicenseAgreement();
     setupTrayIcon();
     setupRsyncProcesses();
     setupLocalServer();
@@ -281,15 +281,12 @@ void RayPumpWindow::handleConnectionStatus(bool connected, const QString &msg)
     }
 }
 
-void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &arg)
-{
-    if (!arg.isValid()){
-        uINFO << "invalid argument";
-        return;
-    }
+void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariantMap &arg)
+{    
     switch(command){
     case CC_CONFIRM_AUTH:
     {
+        uINFO << "auth confirmation required" << arg.value("reason");
         QVariantMap args;
         args["name"] = ui->lineEditUserName->text();
         args["password"] = ui->lineEditUserPass->text();
@@ -306,8 +303,7 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
         break;
     case CC_CONFIRM_VALIDATED:
     {
-        QVariantMap map  = arg.toMap();
-        if (map.value("valid").toBool()){
+        if (arg.value("valid").toBool()){
             ui->actionConnect->setChecked(true);
             m_trayIcon->setIcon(QIcon(":/icons/icons/logo_small.ico"));
         }
@@ -324,7 +320,7 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
     }
     case CC_CONFIRM_SCENE_PREPARED:
     {
-        QString jobName = arg.toMap().value("job_name").toString();
+        QString jobName = arg.value("job_name").toString();
         if (jobName.isEmpty()){
             uERROR << "no job name given";
             break;
@@ -335,7 +331,7 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
     case CC_CONFIRM_SCENE_SCHEDULED:
     {
         uINFO << "scene scheduled";
-        int seconds = (arg.toInt());
+        int seconds = arg.value("seconds", 0).toInt();
         ui->statusBar->showMessage(tr("Job scheduled"));
         m_status = tr("Job scheduled. Awaiting free resources...");
         if (seconds){
@@ -348,16 +344,19 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
         break;
     case CC_CONFIRM_SCENE_TESTING:
     {
-        QString sceneName = arg.toString();
+        QString sceneName = arg.value("scene_name").toString();
         ui->progressBarRender->setProperty("testing", true);
         m_trayIcon->showMessage("RayPump", tr("Testing: %1").arg(sceneName), QSystemTrayIcon::Information, 2000);
         m_status = tr("Testing scene %1").arg(sceneName);
         uINFO << "testing scene" << sceneName;
     }
         break;
+    case CC_CONFIRM_SCENE_READY:
+        handleSceneReady(arg.value("scene_name").toString());
+        break;
     case CC_CONFIRM_SCENE_RUNNING:
     {
-        QString sceneName = arg.toString();
+        QString sceneName = arg.value("scene_name").toString();
         uINFO << "scene confirmed (running)" << sceneName;
         if (!sceneName.isEmpty()){
             m_jobStartTimes.insert(sceneName, QDateTime::currentDateTime());
@@ -370,24 +369,24 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
         break;
     case CC_CONFIRM_DOWNLOAD_READY:
     {
-        //QString sceneName = arg.toString();
         uINFO << "download ready";
         transferRenders();
-        //calculateJobTime(sceneName);
     }
         break;
     case CC_CONFIRM_JOBLIMIT_EXCEEDED:
-        uERROR << "job limit exceeded" << arg.toInt();
+    {
+        int limit = arg.value("limit").toInt();
+        uERROR << "job limit exceeded" << limit;
         show();
         raise();
         activateWindow();
         m_trayIcon->showMessage("RayPump", tr("Queue limit reached"), QSystemTrayIcon::Warning);
         m_status = tr("Queue limit reached");
-        QMessageBox::warning(this, tr("RayPump limitation"), tr("User's jobs queue is limited<br><br>Please wait for previously scheduled job(s) to complete").arg(arg.toInt()));
+        QMessageBox::warning(this, tr("RayPump limitation"), tr("User's jobs queue is limited<br><br>Please wait for previously scheduled job(s) to complete").arg(limit));
+    }
         break;
     case CC_CONFIRM_DAILYJOBLIMIT_EXCEEDED:
     {
-        QVariantMap map = arg.toMap();
         show();
         raise();
         activateWindow();
@@ -396,22 +395,21 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
         QMessageBox::warning(this,
                              tr("RayPump limitation"),
                              tr("%1: daily job count exceeded limit (%2 of %3)")
-                             .arg(map.value("package").toString().toUpper())
-                             .arg(map.value("counter").toInt())
-                             .arg(map.value("limit").toInt()));
+                             .arg(arg.value("package").toString().toUpper())
+                             .arg(arg.value("counter").toInt())
+                             .arg(arg.value("limit").toInt()));
     }
         break;
     case CC_ERROR_SCENE_NOT_FOUND:
     {
-        QString sceneName = arg.toString();
+        QString sceneName = arg.value("scene_name").toString();
         QMessageBox::warning(this, tr("RayPump error"), tr("Failed to start scheduled scene: %1<br><br>Try to re-send your job. If problem presists, please report a bug").arg(sceneName));
     }
         break;
     case CC_ERROR_SCENE_TEST_FAILED:
     {
-        QVariantMap map = arg.toMap();
-        QString sceneName = map.value("scene_name").toString();
-        QString reason = map.value("reason").toString();
+        QString sceneName = arg.value("scene_name").toString();
+        QString reason = arg.value("reason").toString();
         show();
         raise();
         activateWindow();
@@ -430,17 +428,20 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
     }
         break;    
     case CC_CONFIRM_GENERAL_INFO:
-        m_trayIcon->showMessage("RayPump Farm message:", arg.toString(), QSystemTrayIcon::Warning);
+        m_trayIcon->showMessage("RayPump Farm message:", arg.value("message").toString(), QSystemTrayIcon::Warning);
         break;
     case CC_CONFIRM_IMPORTANT_INFO:
-        QMessageBox::warning(this, tr("RayPump Farm message"), arg.toString());
+        QMessageBox::warning(this, tr("RayPump Farm message"), arg.value("message").toString());
         break;
     case CC_CONFIRM_QUEUE_STATUS:
     {
-        QVariantMap jobs = arg.toMap();
+        QVariantMap jobs = arg;
         jobs.remove("command");
         m_jobManager->setJobs(jobs);
     }
+        break;
+    case CC_CONFIRM_QUEUE_PROGRESS:
+        uINFO << "scene progress" << arg.value("queue_progress");
         break;
     default:
         uERROR << "unhandled command" << command << arg;
@@ -450,6 +451,10 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
 
 void RayPumpWindow::handleSceneReady(const QString &sceneName)
 {
+    if (sceneName.isEmpty()){
+        uERROR << "empty scene name";
+        return;
+    }
     uINFO << "scene ready" << sceneName;
     ui->statusBar->showMessage(tr("Downloading..."));
     transferRenders();
@@ -611,8 +616,7 @@ void RayPumpWindow::setupRemoteClient()
 {
     m_remoteClient = new RemoteClient(this);
     connect(m_remoteClient, SIGNAL(connected(bool,QString)), SLOT(handleConnectionStatus(bool,QString)));
-    connect(m_remoteClient, SIGNAL(receivedRayPumpMessage(CommandCode,QVariant)), SLOT(handleRayPumpCommand(CommandCode,QVariant)));
-    connect(m_remoteClient, SIGNAL(sceneReady(QString)), SLOT(handleSceneReady(QString)));
+    connect(m_remoteClient, SIGNAL(receivedRayPumpMessage(CommandCode,QVariantMap)), SLOT(handleRayPumpCommand(CommandCode,QVariantMap)));
     m_synchroInProgress = false;
     m_downloadTryCounter = 0;
 }
@@ -657,8 +661,8 @@ bool RayPumpWindow::transferScene(const QFileInfo &sceneFileInfo)
         return false;
     }
 
-    if(m_blenderAddonVersion < (qreal)G_VERSION){
-        uERROR << m_blenderAddonVersion << "instead of" << G_VERSION << "outdated Blender add-on version. Aborting...";
+    if(m_blenderAddonVersion < (qreal)G_ALLOWED_ADDON_VERSION){
+        uERROR << m_blenderAddonVersion << "instead of" << G_ALLOWED_ADDON_VERSION << "outdated Blender add-on version. Aborting...";
         QMessageBox::warning(this, tr("RayPump error"), tr("Your Blender's add-on version is outdated.<br><br>Please install the newest version from current RayPump directory"));
         return false;
     }

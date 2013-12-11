@@ -88,12 +88,9 @@ void RemoteClient::handleReadyRead()
     }
 
     CommandCode command = (CommandCode)(result.value("command").toInt());
-    /// @badcode switch here is pretty inconsistent.
-    /// Another switch in main window is required anyway, so it might be better idea just to do the basic check and redirect the input with single emit
+
     switch (command){
-    case CC_CONFIRM_AUTH:
-        emit receivedRayPumpMessage(command, result.value("reason"));
-        break;
+
     case CC_CONFIRM_VALIDATED:
     {
         bool validated = result.value("valid").toBool();
@@ -112,51 +109,14 @@ void RemoteClient::handleReadyRead()
         emit receivedRayPumpMessage(command, result);
     }
         break;
-    case CC_CONFIRM_SCENE_SCHEDULED: ////
-        emit receivedRayPumpMessage(command, result.value("seconds", 0));
-        break;
-    case CC_CONFIRM_SCENE_PREPARED:
-        emit receivedRayPumpMessage(command, result);
-        break;
-    case CC_CONFIRM_SCENE_READY:
-    {
-        QString sceneName = result.value("scene_name").toString();
-        if (sceneName.isEmpty()){
-            uERROR << "empty scene name";
-        }
-        else{
-            emit sceneReady(sceneName);
-        }
-    }
-        break;
-    case CC_CONFIRM_SCENE_TESTING: case CC_CONFIRM_SCENE_RUNNING:
-    {
-        QString sceneName = result.value("scene_name").toString();
-        emit receivedRayPumpMessage(command, sceneName);
-    }
-        break;
-    case CC_CONFIRM_DOWNLOAD_READY:
-    {
-        bool valid = result.value("ready").toBool();
-        emit receivedRayPumpMessage(command, valid);
-    }
-        break;
-    case CC_CONFIRM_JOBLIMIT_EXCEEDED: case CC_CONFIRM_DAILYJOBLIMIT_EXCEEDED:
-        emit receivedRayPumpMessage(command, result);
-        break;
+    case CC_CONFIRM_AUTH: case CC_CONFIRM_SCENE_SCHEDULED:
+    case CC_CONFIRM_SCENE_READY: case CC_CONFIRM_DOWNLOAD_READY:
     case CC_ERROR_SCENE_NOT_FOUND:
-        emit receivedRayPumpMessage(command, result.value("scene_name"));
-        break;
-    case CC_ERROR_SCENE_TEST_FAILED:
-        if (!result.contains("reason")){
-            uERROR << "cannot find 'reason' value";
-        }
-        emit receivedRayPumpMessage(command, result);
-        break;
     case CC_CONFIRM_GENERAL_INFO: case CC_CONFIRM_IMPORTANT_INFO:
-        emit receivedRayPumpMessage(command, result.value("message"));
-        break;
-    case CC_CONFIRM_QUEUE_STATUS:
+    case CC_CONFIRM_SCENE_TESTING: case CC_CONFIRM_SCENE_RUNNING:
+    case CC_ERROR_SCENE_TEST_FAILED: case CC_CONFIRM_SCENE_PREPARED:
+    case CC_CONFIRM_JOBLIMIT_EXCEEDED: case CC_CONFIRM_DAILYJOBLIMIT_EXCEEDED:
+    case CC_CONFIRM_QUEUE_STATUS: case CC_CONFIRM_QUEUE_PROGRESS:
         emit receivedRayPumpMessage(command, result);
         break;
     default:

@@ -142,7 +142,6 @@ void JobManager::handleSelectionChanged()
             m_lastSelectedItemsTextList.insert(m_tableJobs->item(item->row(), 0)->text());
         }
     }
-    uINFO << m_lastSelectedItemsTextList;
     m_pushButtonCancelJob->setEnabled(!m_tableJobs->selectedItems().isEmpty());
 }
 
