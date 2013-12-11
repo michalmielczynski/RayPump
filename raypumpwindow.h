@@ -28,31 +28,37 @@
 #include "jobmanager.h"
 
 /** @todo GENERAL IDEAS/BUGS
+
  *1)
- * Upcoming version should have integrated JobManager - so, no more separated windows, instead expandable main window:
- * - by default RayPump window looks much like its current version: lean and mean
- * - by using the Advanced/Expert/Expand toggle button we expand the window - now it looks like combined JobManager and main window, with combined functionality;
- * - we keep the user's choice in QSettings
+ *Integrated rsync (difficulty: hard)
+ * - current separate rsync binary (for Windows) causes some problems;
+ * - being Linux/Mac binary dependent also isn't the best solution;
+ * Making custom rsync based class inside RayPump code could help to solve stability and security issues
  *
  *2)
- * Customized RENDERS directory:
- * - user can specify destination directory for renders;
- * - we keep the user's choice in QSettings
- *
- *3)
- * Non-ASCII paths/names cause problems.
+ * Non-ASCII paths/names cause problems (work in progress, by Tiago Shibata) (difficulty: medium)
  * - scene names should be converted to ASCII during the copying to BUFFER;
  * - RayPump path passed to Blender should handle UTF-8;
  *
- *4)
- * Auto-lauch
+ *3)
+ * Auto-lauch (difficulty: easy)
  * - running the RayPump client should be initialized from Blender panel to avoid application switching
  * - path of the RayPump binary can be set (and stored) in Blender settings.
  *
- *5)
- * Support usage by multiple users
- * - Opening RayPump inside one user and launching blener inside another creates a successful
+ *4)
+ * Support usage by multiple users (difficulty: unknown)
+ * - Opening RayPump inside one user and launching Blender inside another creates a successful
  *   connection, but Linux doesn't allow sending data between them
+ *
+ *5)
+ * Automatic software upgrade (difficulty: hard)
+ * - despite the outdated warnings, RayPump client should download and upgrade automatically
+ *
+ *6)
+ * "Back to the Blender" (difficulty: hard)
+ * - just an idea, but it would be neat thing to have: once the rendered image is ready and downloaded it gets imported
+ *   back to Blender. In perfect world, this online rendered image would behave just like local render result (having all the
+ *   features inside Blender)
  */
 
 namespace Ui {
