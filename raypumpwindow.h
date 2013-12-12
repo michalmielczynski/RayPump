@@ -72,6 +72,7 @@ class RayPumpWindow : public QMainWindow
 public:
     explicit RayPumpWindow(QWidget *parent = 0);
     ~RayPumpWindow();
+    void run();
 
     /// @note has to be synchronized with the same enum on server side
     enum Package {
@@ -94,6 +95,9 @@ public:
         int frameStart;
         int frameEnd;
     };
+
+public slots:
+    void handleInstanceWakeup(const QString &message);
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -133,9 +137,7 @@ private slots:
     void on_pushButtonCleanUp_clicked();
     void on_pushButtonRefresh_clicked();
     void on_pushButtonConnect_clicked();
-
     void on_groupBoxAdvancedMode_toggled(bool toggled);
-
     void on_pushButtonCancelJob_clicked();
     void on_pushButtonRenderPath_clicked();
 

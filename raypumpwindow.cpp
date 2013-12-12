@@ -26,6 +26,16 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::RayPumpWindow)
 {
+    /// @note we leave the constructor empty, in case we find other RayPump instance to wake up
+}
+
+RayPumpWindow::~RayPumpWindow()
+{
+    delete ui;
+}
+
+void RayPumpWindow::run()
+{
     uINFO << "RayPump Client" << G_VERSION << "(c) michal.mielczynski@gmail.com. All rights reserved.";
     m_simpleCryptKey = 1365559412; //:)
 
@@ -75,13 +85,12 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     m_currentJob.clear();
     m_blenderAddonVersion = 0.0;
 
-
-
 }
 
-RayPumpWindow::~RayPumpWindow()
+void RayPumpWindow::handleInstanceWakeup(const QString &message)
 {
-    delete ui;
+    uINFO << message;
+    on_actionShow_triggered();
 }
 
 void RayPumpWindow::closeEvent(QCloseEvent *event)
