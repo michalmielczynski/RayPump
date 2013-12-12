@@ -51,7 +51,6 @@ void RayPumpWindow::run()
     ui->progressBar->setMinimum(0);
     ui->progressBar->setMaximum(0);
     ui->actionConnect->setProperty("force", false);
-    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
 
     setupLicenseAgreement();
     setupTrayIcon();
@@ -864,16 +863,14 @@ void RayPumpWindow::handleRenderPointsChanged(int renderPoints)
 
 void RayPumpWindow::assertSynchroDirectories()
 {
-    QDir path(QDir::homePath());
-
+    QSettings settings;
+    Globals::RENDERS_DIRECTORY = settings.value("renders_path", QDir::homePath() + "/RayPump").toString();
+    QDir path(Globals::RENDERS_DIRECTORY);
     if (!path.mkpath(Globals::RENDERS_DIRECTORY)){
-        QMessageBox::critical(0, "RayPump failed", "Failed to create renders directory " + Globals::RENDERS_DIRECTORY);
-        Globals::RENDERS_DIRECTORY = "RayPump";
-        if (!path.mkpath(Globals::RENDERS_DIRECTORY)){   //if the specified directory isn't avaliable, use <Home>/RayPump
-            QMessageBox::critical(0, "RayPump failed", "Failed to create directory");
-            exit(EXIT_FAILURE);
-        }
+        QMessageBox::critical(0, "", tr("Failed to read/create renders folder %1").arg(Globals::RENDERS_DIRECTORY));
     }
+
+    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
 }
 
 /// @todo doesn't work yet (should fix Windows' rsync bug that set persmissions to public)
@@ -1214,13 +1211,15 @@ void RayPumpWindow::on_pushButtonCancelJob_clicked()
 
 void RayPumpWindow::on_pushButtonRenderPath_clicked()
 {
+    QSettings settings;
     QFileDialog dialog(this);
+
     dialog.setFileMode(QFileDialog::Directory);
     dialog.setOption(QFileDialog::ShowDirsOnly, true);
     QString newPath = dialog.getExistingDirectory(this, tr("Choose directory"), Globals::RENDERS_DIRECTORY, QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     if (newPath != "")
         Globals::RENDERS_DIRECTORY = newPath;
-    QSettings settings;
-    settings.setValue("renders_directory", Globals::RENDERS_DIRECTORY);
-    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
+
+    settings.setValue("renders_path", Globals::RENDERS_DIRECTORY);
+    assertSynchroDirectories();
 }
