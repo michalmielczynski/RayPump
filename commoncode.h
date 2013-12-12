@@ -5,6 +5,8 @@
 #include <QDebug>
 #include <QString>
 #include <QHostAddress>
+#include <QDir>
+#include <QApplication>
 
 #define uINFO qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss") << "info: (" << __FUNCTION__ << ")"
 #define uWARNING qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss") << "WARNING: (" << __FUNCTION__ << ")"
@@ -13,10 +15,6 @@
 const static qreal G_VERSION = 0.994f;
 const static qreal G_ALLOWED_ADDON_VERSION = 0.993f;
 const static QString G_VERSION_NAME =  "Winter White";
-
-const static QString G_BUFFER_DIRECTORY = "BUFFER";
-const static QString G_RENDERS_DIRECTORY = "RENDERS";
-
 
 // global variables
 struct Globals{

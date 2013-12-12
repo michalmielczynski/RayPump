@@ -864,13 +864,20 @@ void RayPumpWindow::handleRenderPointsChanged(int renderPoints)
 void RayPumpWindow::assertSynchroDirectories()
 {
     QSettings settings;
+
     Globals::RENDERS_DIRECTORY = settings.value("renders_path", QDir::homePath() + "/RayPump").toString();
-    QDir path(Globals::RENDERS_DIRECTORY);
-    if (!path.mkpath(Globals::RENDERS_DIRECTORY)){
+    QDir rendersPath(Globals::RENDERS_DIRECTORY);
+    if (!rendersPath.mkpath(Globals::RENDERS_DIRECTORY)){
         QMessageBox::critical(0, "", tr("Failed to read/create renders folder %1").arg(Globals::RENDERS_DIRECTORY));
     }
 
     ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
+
+    QDir buffersPath(QApplication::applicationDirPath());
+    if (!buffersPath.mkpath(Globals::BUFFER_DIRECTORY)){
+        QMessageBox::warning(this, tr("RayPump failed"), tr("Failed to create buffer directory. Check write-access in RayPump folder"));
+        exit(EXIT_FAILURE);
+    }
 }
 
 /// @todo doesn't work yet (should fix Windows' rsync bug that set persmissions to public)
