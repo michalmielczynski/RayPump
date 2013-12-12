@@ -36,18 +36,6 @@
 #include "raypumpwindow.h"
 
 
-#if QT_VERSION < 0X050000
-void myMessageOutput(QtMsgType type, const char *msg)
-#else
-void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
-#endif
-{
-    QFile outFile("debuglog.txt");
-    outFile.open(QIODevice::WriteOnly | QIODevice::Append);
-    QTextStream ts(&outFile);
-    ts << msg << endl;
-}
-
 int main(int argc, char *argv[])
 {
 #ifdef Q_OS_MACX

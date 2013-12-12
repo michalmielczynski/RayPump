@@ -1040,7 +1040,12 @@ void RayPumpWindow::on_actionAbout_triggered()
 #else
     QMessageBox::about(this,
                        tr("About RayPump"),
-                       tr("<b>RayPump Online Cycles Accelerator for Blender</b><br><a href=http://www.raypump.com>www.RayPump.com</a><br><br>version %1 '%4'<br><br>by michal.mielczynski@gmail.com<br><br>User: %3<br><br>This version uses Render Points system")
+                       tr("\
+                          <b>RayPump<br><br>\
+                          Online Cycles Accelerator for Blender</b><br>\
+                          <a href=http://www.raypump.com>www.RayPump.com</a><br><br>\
+                          version %1 '%4'<br><br>\
+                          you: %3<br>")
                        .arg(G_VERSION)
                        .arg(ui->lineEditUserName->text())
                        .arg(G_VERSION_NAME)
