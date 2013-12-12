@@ -1113,7 +1113,7 @@ void RayPumpWindow::on_lineEditUserName_returnPressed()
 
 void RayPumpWindow::on_actionAdd_Render_Points_triggered()
 {
-    QDesktopServices::openUrl(QUrl("http://raypump.com/index.php/buy/renderpoints"));
+    QDesktopServices::openUrl(QUrl("http://raypump.com/pro"));
 }
 
 void RayPumpWindow::on_actionCancel_uploading_triggered()
