@@ -873,11 +873,24 @@ void RayPumpWindow::assertSynchroDirectories()
 
     ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
 
-    QDir buffersPath(QApplication::applicationDirPath());
-    if (!buffersPath.mkpath(Globals::BUFFER_DIRECTORY)){
-        QMessageBox::warning(this, tr("RayPump failed"), tr("Failed to create buffer directory. Check write-access in RayPump folder"));
+    /// @test
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    QString username;
+#ifdef Q_OS_WIN
+    username = env.value("USERNAME");
+#else
+    username = env.value("USER");
+#endif
+
+    QDir path(QDir::homePath());
+    Globals::BUFFER_DIRECTORY = path.tempPath() + "/raypump-" + username;
+
+    if (!path.mkpath(Globals::BUFFER_DIRECTORY)){
+        QMessageBox::critical(0, "RayPump failed", "Failed to create buffer directory" + Globals::BUFFER_DIRECTORY);
         exit(EXIT_FAILURE);
     }
+    /// @endcode
+
 }
 
 /// @todo doesn't work yet (should fix Windows' rsync bug that set persmissions to public)
