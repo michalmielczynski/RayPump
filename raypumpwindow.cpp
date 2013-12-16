@@ -216,7 +216,6 @@ void RayPumpWindow::handleRsyncRendersFinished(int exitCode, QProcess::ExitStatu
     if (exitCode == 0 && exitStatus == QProcess::NormalExit){
         m_downloadTryCounter = 0;
         ui->progressBarRender->hide();
-        this->activateWindow();
         m_trayIcon->showMessage("RayPump", tr("Renders downloaded"), QSystemTrayIcon::Information, 10000);
         ui->statusBar->showMessage(tr("Download complete"));
         m_status = tr("Download complete");
