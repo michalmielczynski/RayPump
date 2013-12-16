@@ -32,21 +32,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "qtsingleapplication/qtsingleapplication.h"
 #include "raypumpwindow.h"
-#include "application.h"
 
-
-#if QT_VERSION < 0X050000
-void myMessageOutput(QtMsgType type, const char *msg)
-#else
-void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
-#endif
-{
-    QFile outFile("debuglog.txt");
-    outFile.open(QIODevice::WriteOnly | QIODevice::Append);
-    QTextStream ts(&outFile);
-    ts << msg << endl;
-}
 
 int main(int argc, char *argv[])
 {
@@ -62,12 +50,7 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationDomain("raypump.com");
     QCoreApplication::setApplicationName("RayPump client");
 
-    Application a(argc, argv);
-    if (!a.lock()){
-        QMessageBox::critical(0, "Error", "Application is already running");
-        exit(1);
-    }
-
+    QtSingleApplication instance(argc, argv);
     QCoreApplication::addLibraryPath("lib");
 
 #if QT_VERSION > 0X040800
@@ -75,6 +58,12 @@ int main(int argc, char *argv[])
 #endif
 
     RayPumpWindow w;
+    QObject::connect(&instance, SIGNAL(messageReceived(const QString&)), &w, SLOT(handleInstanceWakeup(const QString&)));
+    if (instance.sendMessage("Wake up!")){
+        uINFO << "waking up the other instance and quitting...";
+        return 0;
+    }
+    w.run();
     w.show();
-    return a.exec();
+    return instance.exec();
 }

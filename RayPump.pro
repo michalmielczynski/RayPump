@@ -17,21 +17,31 @@ macx:ICON = $${PWD}/RayPump.icns
 SOURCES += main.cpp\
         raypumpwindow.cpp \
     localserver.cpp \
-    application.cpp \
     json/json.cpp \
     remoteclient.cpp \
     simplecript.cpp \
     commoncode.cpp \
-    jobmanager.cpp
+    jobmanager.cpp \
+    qtsingleapplication/qtsinglecoreapplication.cpp \
+    qtsingleapplication/qtsingleapplication.cpp \
+    qtsingleapplication/qtlockedfile.cpp \
+    qtsingleapplication/qtlockedfile_win.cpp \
+    qtsingleapplication/qtlockedfile_unix.cpp \
+    qtsingleapplication/qtlocalpeer.cpp
 
 HEADERS  += raypumpwindow.h \
     localserver.h \
     commoncode.h \
-    application.h \
     json/json.h \
     remoteclient.h \
     simplecript.h \
-    jobmanager.h
+    jobmanager.h \
+    qtsingleapplication/qtsinglecoreapplication.h \
+    qtsingleapplication/qtsingleapplication.h \
+    qtsingleapplication/QtSingleApplication \
+    qtsingleapplication/qtlockedfile.h \
+    qtsingleapplication/QtLockedFile \
+    qtsingleapplication/qtlocalpeer.h
 
 FORMS    += raypumpwindow.ui
 
@@ -41,4 +51,6 @@ RESOURCES += \
 RC_FILE = RayPumpIcon.rc
 
 OTHER_FILES += \
-    RayPumpIcon.rc
+    RayPumpIcon.rc \
+    qtsingleapplication/qtsinglecoreapplication.pri \
+    qtsingleapplication/qtsingleapplication.pri

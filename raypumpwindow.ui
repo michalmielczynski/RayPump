@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>842</width>
+    <width>844</width>
     <height>583</height>
    </rect>
   </property>
@@ -76,7 +76,7 @@
           <item>
            <widget class="QCheckBox" name="checkBoxRememberUser">
             <property name="toolTip">
-             <string>Stores user's creditentials on this computer</string>
+             <string>Stores user's credentials on this computer</string>
             </property>
             <property name="text">
              <string>store</string>
@@ -369,8 +369,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>842</width>
-     <height>21</height>
+     <width>844</width>
+     <height>25</height>
     </rect>
    </property>
    <property name="nativeMenuBar">

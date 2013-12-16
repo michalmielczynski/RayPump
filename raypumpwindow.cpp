@@ -26,6 +26,16 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::RayPumpWindow)
 {
+    /// @note we leave the constructor empty, in case we find other RayPump instance to wake up
+}
+
+RayPumpWindow::~RayPumpWindow()
+{
+    delete ui;
+}
+
+void RayPumpWindow::run()
+{
     uINFO << "RayPump Client" << G_VERSION << "(c) michal.mielczynski@gmail.com. All rights reserved.";
     m_simpleCryptKey = 1365559412; //:)
 
@@ -41,7 +51,6 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     ui->progressBar->setMinimum(0);
     ui->progressBar->setMaximum(0);
     ui->actionConnect->setProperty("force", false);
-    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
 
     setupLicenseAgreement();
     setupTrayIcon();
@@ -75,13 +84,12 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     m_currentJob.clear();
     m_blenderAddonVersion = 0.0;
 
-
-
 }
 
-RayPumpWindow::~RayPumpWindow()
+void RayPumpWindow::handleInstanceWakeup(const QString &message)
 {
-    delete ui;
+    uINFO << message;
+    on_actionShow_triggered();
 }
 
 void RayPumpWindow::closeEvent(QCloseEvent *event)
@@ -854,16 +862,34 @@ void RayPumpWindow::handleRenderPointsChanged(int renderPoints)
 
 void RayPumpWindow::assertSynchroDirectories()
 {
-    QDir path(QDir::homePath());
+    QSettings settings;
 
-    if (!path.mkpath(Globals::RENDERS_DIRECTORY)){
-        QMessageBox::critical(0, "RayPump failed", "Failed to create renders directory " + Globals::RENDERS_DIRECTORY);
-        Globals::RENDERS_DIRECTORY = "RayPump";
-        if (!path.mkpath(Globals::RENDERS_DIRECTORY)){   //if the specified directory isn't avaliable, use <Home>/RayPump
-            QMessageBox::critical(0, "RayPump failed", "Failed to create directory");
-            exit(EXIT_FAILURE);
-        }
+    Globals::RENDERS_DIRECTORY = settings.value("renders_path", QDir::homePath() + "/RayPump").toString();
+    QDir rendersPath(Globals::RENDERS_DIRECTORY);
+    if (!rendersPath.mkpath(Globals::RENDERS_DIRECTORY)){
+        QMessageBox::critical(0, "", tr("Failed to read/create renders folder %1").arg(Globals::RENDERS_DIRECTORY));
     }
+
+    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
+
+    /// @test
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    QString username;
+#ifdef Q_OS_WIN
+    username = env.value("USERNAME");
+#else
+    username = env.value("USER");
+#endif
+
+    QDir path(QDir::homePath());
+    Globals::BUFFER_DIRECTORY = path.tempPath() + "/raypump-" + username;
+
+    if (!path.mkpath(Globals::BUFFER_DIRECTORY)){
+        QMessageBox::critical(0, "RayPump failed", "Failed to create buffer directory" + Globals::BUFFER_DIRECTORY);
+        exit(EXIT_FAILURE);
+    }
+    /// @endcode
+
 }
 
 /// @todo doesn't work yet (should fix Windows' rsync bug that set persmissions to public)
@@ -1033,7 +1059,12 @@ void RayPumpWindow::on_actionAbout_triggered()
 #else
     QMessageBox::about(this,
                        tr("About RayPump"),
-                       tr("<b>RayPump Online Cycles Accelerator for Blender</b><br><a href=http://www.raypump.com>www.RayPump.com</a><br><br>version %1 '%4'<br><br>by michal.mielczynski@gmail.com<br><br>User: %3<br><br>This version uses Render Points system")
+                       tr("\
+                          <b>RayPump<br><br>\
+                          Online Cycles Accelerator for Blender</b><br>\
+                          <a href=http://www.raypump.com>www.RayPump.com</a><br><br>\
+                          version %1 '%4'<br><br>\
+                          you: %3<br>")
                        .arg(G_VERSION)
                        .arg(ui->lineEditUserName->text())
                        .arg(G_VERSION_NAME)
@@ -1101,7 +1132,7 @@ void RayPumpWindow::on_lineEditUserName_returnPressed()
 
 void RayPumpWindow::on_actionAdd_Render_Points_triggered()
 {
-    QDesktopServices::openUrl(QUrl("http://raypump.com/index.php/buy/renderpoints"));
+    QDesktopServices::openUrl(QUrl("http://raypump.com/pro"));
 }
 
 void RayPumpWindow::on_actionCancel_uploading_triggered()
@@ -1204,13 +1235,15 @@ void RayPumpWindow::on_pushButtonCancelJob_clicked()
 
 void RayPumpWindow::on_pushButtonRenderPath_clicked()
 {
+    QSettings settings;
     QFileDialog dialog(this);
+
     dialog.setFileMode(QFileDialog::Directory);
     dialog.setOption(QFileDialog::ShowDirsOnly, true);
     QString newPath = dialog.getExistingDirectory(this, tr("Choose directory"), Globals::RENDERS_DIRECTORY, QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     if (newPath != "")
         Globals::RENDERS_DIRECTORY = newPath;
-    QSettings settings;
-    settings.setValue("renders_directory", Globals::RENDERS_DIRECTORY);
-    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
+
+    settings.setValue("renders_path", Globals::RENDERS_DIRECTORY);
+    assertSynchroDirectories();
 }

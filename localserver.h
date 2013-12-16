@@ -5,6 +5,7 @@
 #include <QTcpSocket>
 #include <QDebug>
 #include <QDir>
+#include <QApplication>
 
 #include "commoncode.h"
 #include "json/json.h"
