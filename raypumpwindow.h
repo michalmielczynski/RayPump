@@ -164,6 +164,7 @@ private slots:
     void on_groupBoxAdvancedMode_toggled(bool toggled);
     void on_pushButtonCancelJob_clicked();
     void on_pushButtonRenderPath_clicked();
+    void on_spinBoxUploadLimit_valueChanged(int arg1);
 
 private:
     void setupTrayIcon();

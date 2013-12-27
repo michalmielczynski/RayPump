@@ -40,7 +40,6 @@ public:
     explicit JobManager(QTableWidget *tableJobs, QLineEdit *lineEditCounters, QPushButton *pushButtonCancelJobs, QObject *parent = 0);
     ~JobManager() {}
     void setJobs(const QVariantMap &jobs);
-    int uploadLimit();
 
 signals:
     void requestProgressDisplay(int progress, int total);

@@ -131,12 +131,6 @@ void JobManager::setJobs(const QVariantMap &jobs)
     m_tableJobs->setSortingEnabled(sorting);
 }
 
-int JobManager::uploadLimit()
-{
-    /// @todo missing code
-    return 0;
-}
-
 void JobManager::processProgress(const QByteArray &progress)
 {
     if (progress.isEmpty()){

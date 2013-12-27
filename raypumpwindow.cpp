@@ -1182,3 +1182,8 @@ void RayPumpWindow::on_pushButtonRenderPath_clicked()
     settings.setValue("renders_path", Globals::RENDERS_DIRECTORY);
     assertSynchroDirectories();
 }
+
+void RayPumpWindow::on_spinBoxUploadLimit_valueChanged(int arg1)
+{
+    m_sceneTransferManager->setTransferLimit(arg1);
+}

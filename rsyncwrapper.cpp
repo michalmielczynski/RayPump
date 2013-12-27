@@ -23,7 +23,8 @@
 
 RsyncWrapper::RsyncWrapper(QObject *parent) :
     QObject(parent),
-    m_synchroInProgress(false)
+    m_synchroInProgress(false),
+    m_transferLimit(0)
 {
 #if defined(Q_OS_WIN)
     m_rsyncFilePath = QFileInfo("rsync/rsync.exe");
@@ -50,17 +51,15 @@ void RsyncWrapper::buffer(const QString &sourceDirectory, const QString &destina
     Command command;
     QStringList arguments;
 
-#ifdef Q_OS_WIN
-
     if (QDir(sourceDirectory).isReadable()){
         command.workingDirectory = sourceDirectory;
-        arguments << "--progress" << "-zr" << "--exclude=*.blend?" << "--compress-level=9"\
+        arguments << "--progress" << "-zr" << "--exclude=*.blend?" << "--compress-level=9" << QString("--bwlimit=%1").arg(m_transferLimit)\
                   << "./"\
                   << destinationDirectory;
     }
     else if (QDir(destinationDirectory).isReadable()){
         command.workingDirectory = destinationDirectory;
-        arguments << "--progress" << "--perms" << "--exclude=*.blend*" << "--exclude=*.gz" << "-zr" << "--compress-level=9"\
+        arguments << "--progress" << "--perms" << "--exclude=*.blend*" << "--exclude=*.gz" << "-zr" << "--compress-level=9" <<  QString("--bwlimit=%1").arg(m_transferLimit)\
                   << sourceDirectory\
                   << "./";
     }
@@ -68,25 +67,6 @@ void RsyncWrapper::buffer(const QString &sourceDirectory, const QString &destina
         uERROR << "both source and destination directory are not readable (not local?). Aborting...";
         return;
     }
-#else
-
-    if (QDir(sourceDirectory).isReadable()){
-        command.workingDirectory = sourceDirectory;
-        arguments << "--progress" << "-zr" << "--exclude=*.blend?" << "--compress-level=9"\
-                  << "./"\
-                  << destinationDirectory;
-    }
-    else if (QDir(destinationDirectory).isReadable()){
-        command.workingDirectory = destinationDirectory;
-        arguments << "--progress" << "--perms" << "--exclude=*.blend*" << "--exclude=*.gz" << "-zr" << "--compress-level=9"\
-                  << sourceDirectory\
-                  << "./";
-    }
-    else{
-        uERROR << "both source and destination directory are not readable (not local?). Aborting...";
-        return;
-    }
-#endif
 
     command.arguments = arguments;
     m_commandBuffer.append(command);

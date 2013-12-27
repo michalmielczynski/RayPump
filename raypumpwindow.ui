@@ -151,8 +151,8 @@
             <bool>false</bool>
            </property>
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>1</horstretch>
+            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+             <horstretch>2</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
@@ -184,6 +184,31 @@
            </property>
            <property name="placeholderText">
             <string>daily counters</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QSpinBox" name="spinBoxUploadLimit">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>Limiting upload speed can solve transfer problems under Windows</string>
+           </property>
+           <property name="specialValueText">
+            <string>Full upload speed</string>
+           </property>
+           <property name="suffix">
+            <string> KiB</string>
+           </property>
+           <property name="prefix">
+            <string>Max. upload speed: </string>
+           </property>
+           <property name="maximum">
+            <number>1024</number>
            </property>
           </widget>
          </item>
@@ -358,7 +383,7 @@
      <x>0</x>
      <y>0</y>
      <width>844</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <property name="nativeMenuBar">

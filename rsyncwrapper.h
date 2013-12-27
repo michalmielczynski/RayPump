@@ -45,7 +45,7 @@ public:
     inline void setAccessHash(const QByteArray &hash) { m_accessHash = hash; }
     inline void kill() { m_rsyncProcess->kill(); }
     inline quint64 elapsed() { return m_rsyncTimer.elapsed(); }
-
+    inline void setTransferLimit(int kib) { m_transferLimit = kib; }
 
 signals:
     void rsyncOutput(const QByteArray &output);
@@ -67,6 +67,7 @@ private:
     bool m_synchroInProgress;
     QByteArray m_accessHash;
     QElapsedTimer m_rsyncTimer;
+    int m_transferLimit; // KiB (1024 bytes)
 
 };
 
