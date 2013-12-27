@@ -1,4 +1,4 @@
-/* Copyright 2013 Michal Mielczynski. All rights reserved.
+/* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
  *
  * DISTRIBUTION OF THIS SOFTWARE, IN ANY FORM, WITHOUT WRITTEN PERMISSION FROM
  * MICHAL MIELCZYNSKI, IS ILLEGAL AND PROHIBITED BY LAW.

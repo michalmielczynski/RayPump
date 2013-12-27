@@ -27,7 +27,8 @@ SOURCES += main.cpp\
     qtsingleapplication/qtlockedfile.cpp \
     qtsingleapplication/qtlockedfile_win.cpp \
     qtsingleapplication/qtlockedfile_unix.cpp \
-    qtsingleapplication/qtlocalpeer.cpp
+    qtsingleapplication/qtlocalpeer.cpp \
+    rsyncwrapper.cpp
 
 HEADERS  += raypumpwindow.h \
     localserver.h \
@@ -41,7 +42,9 @@ HEADERS  += raypumpwindow.h \
     qtsingleapplication/QtSingleApplication \
     qtsingleapplication/qtlockedfile.h \
     qtsingleapplication/QtLockedFile \
-    qtsingleapplication/qtlocalpeer.h
+    qtsingleapplication/qtlocalpeer.h \
+    rsyncwrapper.h \
+    fileops.h
 
 FORMS    += raypumpwindow.ui
 

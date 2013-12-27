@@ -1,14 +1,31 @@
+/* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
+ *
+ * DISTRIBUTION OF THIS SOFTWARE, IN ANY FORM, WITHOUT WRITTEN PERMISSION FROM
+ * MICHAL MIELCZYNSKI, IS ILLEGAL AND PROHIBITED BY LAW.
+ *
+ * THIS SOFTWARE IS PROVIDED BY MICHAL MIELCZYNSKI ''AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+ * EVENT SHALL MICHAL MIELCZYNSKI OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+ * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation
+ * are those of the authors and should not be interpreted as representing
+ * official policies, either expressed or implied, of Michal Mielczynski.
+ */
+
 #ifndef RAYPUMPWINDOW_H
 #define RAYPUMPWINDOW_H
 
 #include <QMainWindow>
 #include <QSystemTrayIcon>
-#include <QProcess>
-#include <QFileInfo>
-#include <QMessageBox>
 #include <QDir>
 #include <QFile>
-#include <QElapsedTimer>
 #include <QDesktopServices>
 #include <QUrl>
 #include <QCloseEvent>
@@ -26,6 +43,8 @@
 #include "json/json.h"
 #include "simplecript.h"
 #include "jobmanager.h"
+#include "rsyncwrapper.h"
+#include "fileops.h"
 
 /** @todo GENERAL IDEAS/BUGS
 
@@ -59,6 +78,10 @@
  * - just an idea, but it would be neat thing to have: once the rendered image is ready and downloaded it gets imported
  *   back to Blender. In perfect world, this online rendered image would behave just like local render result (having all the
  *   features inside Blender)
+ *
+ *7)
+ * Fixing the copyright notice (difficulty: trivial)
+ * - header should contain GPL notice instead of illegal distribution stuff
  */
 
 namespace Ui {
@@ -94,6 +117,7 @@ public:
         int frameCurrent;
         int frameStart;
         int frameEnd;
+        QStringList externalPaths;
     };
 
 public slots:
@@ -105,8 +129,8 @@ protected:
 
 private slots:
     void handleLocalMessage(const QByteArray &message);
-    void handleRsyncSceneFinished(int exitCode, QProcess::ExitStatus exitStatus);
-    void handleRsyncRendersFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    void handleRsyncSceneFinished(bool success);
+    void handleRsyncRendersFinished(bool success);
     void handleConnectionStatus(bool connected, const QString &msg);
     void handleRayPumpCommand(CommandCode command, const QVariantMap &arg);
     void handleSceneReady(const QString &sceneName);
@@ -116,8 +140,8 @@ private slots:
     void transferRenders();
     void handleJobManagerStatusBarMessage(const QString &message);
     void handleRenderProgressChanged(int progress, int total);
-    void handleReadyReadRsyncSceneOutput();
-    void handleReadyReadRsyncRendersOutput();
+    void handleReadyReadRsyncSceneOutput(const QByteArray output);
+    void handleReadyReadRsyncRendersOutput(const QByteArray output);
     void handleRenderPointsChanged(int renderPoints);
 
     void on_lineEditUserPass_returnPressed();
@@ -143,13 +167,14 @@ private slots:
 
 private:
     void setupTrayIcon();
-    void setupRsyncProcesses();
+    void setupRsyncWrappers();
     void setupLocalServer();
     void setupRemoteClient();
     void setupAutoconnection();
     void setupJobManager();
     bool transferScene(const QFileInfo &sceneFileInfo);
     void assertSynchroDirectories();
+    void cleanUpBufferDirectory();
     void setRenderFilesPermission();
     void calculateJobTime(const QString &sceneName);
     bool checkMalformedUsername(const QString &userName);
@@ -164,13 +189,9 @@ private:
     JobManager *m_jobManager;
     QSystemTrayIcon *m_trayIcon;
     QMenu *m_trayIconMenu;
-    QProcess *m_rsyncSceneProcess, *m_rsyncRendersProcess;
-    QFileInfo m_rsyncFilePath;
-    QElapsedTimer m_rsyncTimer, m_totalJobTimer;
-    bool m_synchroInProgress;
+    RsyncWrapper *m_sceneTransferManager, *m_rendersTransferManager;
     bool m_wantToQuit;
     quint64 m_simpleCryptKey;
-    QMap<QString,QDateTime> m_jobStartTimes;
     int m_downloadTryCounter;
     QString m_status;
     int m_renderPoints;

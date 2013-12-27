@@ -19,47 +19,55 @@
  * official policies, either expressed or implied, of Michal Mielczynski.
  */
 
-#ifndef JOBMANAGER_H
-#define JOBMANAGER_H
+#ifndef RSYNCWRAPPER_H
+#define RSYNCWRAPPER_H
 
 #include <QObject>
-#include <QSet>
-#include <QString>
-#include <QTableWidget>
-#include <QLineEdit>
-#include <QPushButton>
+#include <QProcess>
+#include <QVariantMap>
+#include <QList>
+#include <QFileInfo>
 #include <QMessageBox>
+#include <QElapsedTimer>
 
 #include "commoncode.h"
 
-class JobManager : public QObject
+class RsyncWrapper : public QObject
 {
     Q_OBJECT
-
 public:
-    explicit JobManager(QTableWidget *tableJobs, QLineEdit *lineEditCounters, QPushButton *pushButtonCancelJobs, QObject *parent = 0);
-    ~JobManager() {}
-    void setJobs(const QVariantMap &jobs);
-    int uploadLimit();
+    explicit RsyncWrapper(QObject *parent = 0);
+    inline bool synchroInProgress() { return m_synchroInProgress; }
+    inline bool isRunning() { return (m_rsyncProcess->state() != QProcess::NotRunning) ;}
+    void buffer(const QString &sourceDirectory, const QString &destinationDirectory);
+    bool run();
+    inline bool isHashValid() { return !m_accessHash.isEmpty(); }
+    inline void setAccessHash(const QByteArray &hash) { m_accessHash = hash; }
+    inline void kill() { m_rsyncProcess->kill(); }
+    inline quint64 elapsed() { return m_rsyncTimer.elapsed(); }
+
 
 signals:
-    void requestProgressDisplay(int progress, int total);
-    void renderPointsChanged(int renderPoints);
-    void requestStatusBarMessage(const QString &message);
+    void rsyncOutput(const QByteArray &output);
+    void finished(bool success);
 
-private slots:
-    void handleSelectionChanged();
+public slots:
+    void handleRsyncFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    void handleReadyReadRsyncOutput();
 
 private:
+    struct Command{
+        QStringList arguments;
+        QString workingDirectory;
+    };
 
-    void processProgress(const QByteArray &progress);
-
-    QSet<QString> m_lastSelectedItemsTextList;
-    QTableWidget *m_tableJobs;
-    QLineEdit *m_lineEditCounters;
-    QPushButton *m_pushButtonCancelJob;
+    QProcess *m_rsyncProcess;
+    QList<Command> m_commandBuffer;
+    QFileInfo m_rsyncFilePath;
+    bool m_synchroInProgress;
+    QByteArray m_accessHash;
+    QElapsedTimer m_rsyncTimer;
 
 };
 
-
-#endif // JOBMANAGER_H
+#endif // RSYNCWRAPPER_H
