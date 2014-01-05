@@ -42,7 +42,12 @@ public:
     void buffer(const QString &sourceDirectory, const QString &destinationDirectory);
     bool run();
     inline bool isHashValid() { return !m_accessHash.isEmpty(); }
-    inline void setAccessHash(const QByteArray &hash) { m_accessHash = hash; }
+    inline void setAccessHash(const QByteArray &hash) {
+        m_accessHash = hash;
+        if (m_autorun){
+            run();
+        }
+    }
     inline void kill() { m_rsyncProcess->kill(); }
     inline quint64 elapsed() { return m_rsyncTimer.elapsed(); }
     inline void setTransferLimit(int kib) { m_transferLimit = kib; }
@@ -65,6 +70,7 @@ private:
     QList<Command> m_commandBuffer;
     QFileInfo m_rsyncFilePath;
     bool m_synchroInProgress;
+    bool m_autorun;
     QByteArray m_accessHash;
     QElapsedTimer m_rsyncTimer;
     int m_transferLimit; // KiB (1024 bytes)

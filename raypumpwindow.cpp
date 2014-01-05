@@ -217,6 +217,7 @@ void RayPumpWindow::handleRsyncSceneFinished(bool success)
     ui->progressBar->reset();
     ui->progressBar->setMaximum(0);
     ui->progressBar->hide();
+    cleanUpBufferDirectory();
 }
 
 void RayPumpWindow::handleRsyncRendersFinished(bool success)
@@ -426,7 +427,7 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariantMap 
     }
         break;
     case CC_CONFIRM_QUEUE_PROGRESS:
-        uINFO << "scene progress" << arg.value("queue_progress");
+        handleOtherUserJobProgress(arg.value("queue_progress").toDouble());
         break;
     default:
         uERROR << "unhandled command" << command << arg;
@@ -769,6 +770,20 @@ void RayPumpWindow::handleRenderPointsChanged(int renderPoints)
     else if (m_renderPoints < 200){
         m_trayIcon->showMessage("RayPump", tr("Less than 200 Render Points left"));
     }
+}
+
+void RayPumpWindow::handleOtherUserJobProgress(double progress)
+{
+    if (!progress){
+        uINFO << "aborting with zero progress value...";
+        return;
+    }
+
+    int waitValue = 100 - (progress * 100.0);
+    ui->progressBarRender->setMaximum(100);
+    ui->progressBarRender->setValue(waitValue);
+
+    ui->statusBar->showMessage(tr("Awaiting free farm resources"));
 }
 
 void RayPumpWindow::assertSynchroDirectories()
@@ -1170,4 +1185,21 @@ void RayPumpWindow::on_pushButtonRenderPath_clicked()
 void RayPumpWindow::on_spinBoxUploadLimit_valueChanged(int arg1)
 {
     m_sceneTransferManager->setTransferLimit(arg1);
+}
+
+void RayPumpWindow::on_actionCleanRemoteBuffer_triggered()
+{
+    QMessageBox msg;
+    msg.setText(tr("Are you sure?"));
+    msg.setInformativeText(tr("Clearing remote buffer will force uploading scenes from scratch. First upload might take a while."));
+    msg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    int ret = msg.exec();
+    if (ret != QMessageBox::Yes){
+        uINFO << "Aborted";
+        return;
+    }
+
+    QVariantMap args;
+    m_remoteClient->sendRayPumpMessage(CC_REQUEST_CLEANUPBUFFER, args);
+
 }

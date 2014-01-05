@@ -59,7 +59,8 @@ enum CommandCode { CC_CONFIRM_AUTH,
                    CC_REQUEST_CANCELJOB,
                    CC_REQUEST_READQUEUE,
                    CC_CONFIRM_GENERAL_INFO,
-                   CC_CONFIRM_QUEUE_PROGRESS
+                   CC_CONFIRM_QUEUE_PROGRESS,
+                   CC_REQUEST_CLEANUPBUFFER
                  };
 class RemoteClient : public QObject
 {

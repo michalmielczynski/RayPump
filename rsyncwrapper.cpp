@@ -24,7 +24,8 @@
 RsyncWrapper::RsyncWrapper(QObject *parent) :
     QObject(parent),
     m_synchroInProgress(false),
-    m_transferLimit(0)
+    m_transferLimit(0),
+    m_autorun(false)
 {
 #if defined(Q_OS_WIN)
     m_rsyncFilePath = QFileInfo("rsync/rsync.exe");
@@ -89,13 +90,14 @@ bool RsyncWrapper::run()
 
     if (!isHashValid()){
         uERROR << "can't continue without valid hash";
+        m_autorun = true;
         return false;
     }
 
     m_rsyncTimer.start();
 
     Command command = m_commandBuffer.takeFirst();
-    uINFO << command.workingDirectory << command.arguments;
+    //uINFO << command.workingDirectory << command.arguments;
 
     QStringList env = QProcess::systemEnvironment();
     env << "RSYNC_PASSWORD=" + m_accessHash;
@@ -110,6 +112,7 @@ bool RsyncWrapper::run()
     }
 
     m_synchroInProgress = true;
+    m_autorun = false;
     return true;
 
 }

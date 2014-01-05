@@ -404,6 +404,7 @@
     <addaction name="actionFolder"/>
     <addaction name="actionDownload"/>
     <addaction name="actionCancel_uploading"/>
+    <addaction name="actionCleanRemoteBuffer"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -550,6 +551,14 @@ padding: 0px;</string>
   <action name="actionCancel_uploading">
    <property name="text">
     <string>Cancel uploading</string>
+   </property>
+  </action>
+  <action name="actionCleanRemoteBuffer">
+   <property name="text">
+    <string>Clean Remote Buffer</string>
+   </property>
+   <property name="toolTip">
+    <string>Deletes your remote buffer folder (might be helful in case of transfer problems)</string>
    </property>
   </action>
  </widget>

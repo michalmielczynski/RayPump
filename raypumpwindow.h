@@ -143,6 +143,7 @@ private slots:
     void handleReadyReadRsyncSceneOutput(const QByteArray output);
     void handleReadyReadRsyncRendersOutput(const QByteArray output);
     void handleRenderPointsChanged(int renderPoints);
+    void handleOtherUserJobProgress(double progress);
 
     void on_lineEditUserPass_returnPressed();
     void on_actionConnect_toggled(bool checked);
@@ -165,6 +166,7 @@ private slots:
     void on_pushButtonCancelJob_clicked();
     void on_pushButtonRenderPath_clicked();
     void on_spinBoxUploadLimit_valueChanged(int arg1);
+    void on_actionCleanRemoteBuffer_triggered();
 
 private:
     void setupTrayIcon();
