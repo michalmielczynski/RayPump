@@ -357,7 +357,7 @@
          </size>
         </property>
         <property name="toolTip">
-         <string>Data transfer in progress</string>
+         <string>Rendering in progress</string>
         </property>
         <property name="value">
          <number>0</number>

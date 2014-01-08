@@ -66,7 +66,6 @@ void RemoteClient::sendRayPumpMessage(CommandCode command, QVariantMap &args)
     out << (quint16)(block.size() - sizeof(quint16));
 
     m_tcpSocket->write(block);
-//    m_tcpSocket->flush();
     if (!m_tcpSocket->waitForBytesWritten()){
         uERROR << "wait for bytes written failed";
     }
