@@ -1,7 +1,7 @@
 /* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
  *
- * DISTRIBUTION OF THIS SOFTWARE, IN ANY FORM, WITHOUT WRITTEN PERMISSION FROM
- * MICHAL MIELCZYNSKI, IS ILLEGAL AND PROHIBITED BY LAW.
+ *
+ * RayPump Client software might be distributed under GNU GENERAL PUBLIC LICENSE
  *
  * THIS SOFTWARE IS PROVIDED BY MICHAL MIELCZYNSKI ''AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -1103,12 +1103,14 @@ void RayPumpWindow::on_tableWidget_cellDoubleClicked(int row, int column)
 
 void RayPumpWindow::on_pushButtonCleanUp_clicked()
 {
+    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
     QVariantMap args;
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_CLEANUPDONEJOBS, args);
 }
 
 void RayPumpWindow::on_pushButtonRefresh_clicked()
 {
+    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
     QVariantMap args;
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_READQUEUE, args);
 }
@@ -1163,6 +1165,8 @@ void RayPumpWindow::on_pushButtonCancelJob_clicked()
     QVariantMap args;
     QStringList jobsList = jobs.toList();
     args.insert("job_name", jobsList);
+
+    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_CANCELJOB, args);
     on_actionCancel_uploading_triggered();
 }

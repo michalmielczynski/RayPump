@@ -1,7 +1,7 @@
 /* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
  *
- * DISTRIBUTION OF THIS SOFTWARE, IN ANY FORM, WITHOUT WRITTEN PERMISSION FROM
- * MICHAL MIELCZYNSKI, IS ILLEGAL AND PROHIBITED BY LAW.
+ *
+ * RayPump Client software might be distributed under GNU GENERAL PUBLIC LICENSE
  *
  * THIS SOFTWARE IS PROVIDED BY MICHAL MIELCZYNSKI ''AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -34,7 +34,7 @@
 #define uERROR qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss") << "ERROR: (" << __FUNCTION__ << ")"
 
 const static qreal G_VERSION = 0.995f;
-const static qreal G_ALLOWED_ADDON_VERSION = 0.994f;
+const static qreal G_ALLOWED_ADDON_VERSION = 0.995f;
 const static QString G_VERSION_NAME =  "Winter White";
 
 // global variables
