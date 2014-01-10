@@ -163,14 +163,10 @@ void RayPumpWindow::handleLocalMessage(const QByteArray &message)
                 m_localServer->confirmSceneScheduled(transferScene(map.value(key).toString()));
         }
         else if (key == "CONNECTED"){
-            ui->statusBar->showMessage(tr("Blender connected"));
-            m_trayIcon->showMessage("RayPump", tr("Blender connected"));
             m_status = tr("Blender connected");
-            on_actionShow_triggered();
         }
         else if (key == "DISCONNECTED"){
             ui->statusBar->showMessage(tr("Blender disconnected"));
-            m_trayIcon->showMessage("RayPump", tr("Blender disconnected"));
             m_status = tr("Blender disconnected");
         }
         else if (key == "FORMAT"){
