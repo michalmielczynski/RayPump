@@ -268,7 +268,7 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariantMap 
     {
         uINFO << "auth confirmation required" << arg.value("reason");
         QVariantMap args;
-        args["name"] = ui->lineEditUserName->text();
+        args["name"] = ui->lineEditUserName->text().toLower();
         args["password"] = ui->lineEditUserPass->text();
 #if defined(Q_OS_MAC)
         args["platform"] = "mac";
@@ -665,7 +665,7 @@ bool RayPumpWindow::transferScene(const QFileInfo &sceneFileInfo)
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_SCENE_PREPARE, arg);
 
 
-    QString destinationDirectory = "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text() + "/BUFFER/" + sceneFileInfo.fileName() + "/";
+    QString destinationDirectory = "rsync://" + ui->lineEditUserName->text().toLower() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text().toLower() + "/BUFFER/" + sceneFileInfo.fileName() + "/";
     m_sceneTransferManager->buffer(Globals::BUFFER_DIRECTORY, destinationDirectory);
 
     foreach (QString externalPath, m_currentJob.externalPaths){
@@ -691,7 +691,7 @@ void RayPumpWindow::transferRenders()
     }
 
     m_rendersTransferManager->buffer(
-                "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/",
+                "rsync://" + ui->lineEditUserName->text().toLower() + "@" + Globals::SERVER_IP + "/renders/" + ui->lineEditUserName->text().toLower() + "/",
                 Globals::RENDERS_DIRECTORY);
 
     if (!m_rendersTransferManager->run()){
@@ -771,7 +771,6 @@ void RayPumpWindow::handleRenderPointsChanged(int renderPoints)
 void RayPumpWindow::handleOtherUserJobProgress(double progress)
 {
     if (!progress){
-        uINFO << "aborting with zero progress value...";
         return;
     }
 
