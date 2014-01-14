@@ -191,6 +191,11 @@ void RayPumpWindow::handleLocalMessage(const QByteArray &message)
         else if (key == "EXTERNAL_PATHS"){
            m_currentJob.externalPaths = map.value(key).toStringList();
         }
+        else if (key == "VIEW"){
+            if (!m_jobManager->lastReadyRenderPath().isEmpty()){
+                openRenderFolder(m_jobManager->lastReadyRenderPath());
+            }
+        }
         /// @todo more to come?
         else{
             uERROR << "unhandled command" << key;

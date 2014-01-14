@@ -105,6 +105,7 @@ void JobManager::setJobs(const QVariantMap &jobs)
             if (itemType->text() == "stress-test"){
                 emit requestStatusBarMessage(QString("Est. cost: %1RP").arg(cost));
             }
+            m_lastReadyRenderPath = path;
         }
     }
 

@@ -40,6 +40,7 @@ public:
     explicit JobManager(QTableWidget *tableJobs, QLineEdit *lineEditCounters, QPushButton *pushButtonCancelJobs, QObject *parent = 0);
     ~JobManager() {}
     void setJobs(const QVariantMap &jobs);
+    inline QString lastReadyRenderPath() { return m_lastReadyRenderPath; }
 
 signals:
     void requestProgressDisplay(int progress, int total);
@@ -57,6 +58,7 @@ private:
     QTableWidget *m_tableJobs;
     QLineEdit *m_lineEditCounters;
     QPushButton *m_pushButtonCancelJob;
+    QString m_lastReadyRenderPath;
 
 };
 
