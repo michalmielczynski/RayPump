@@ -1,7 +1,7 @@
-/* Copyright 2013 Michal Mielczynski. All rights reserved.
+/* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
  *
- * DISTRIBUTION OF THIS SOFTWARE, IN ANY FORM, WITHOUT WRITTEN PERMISSION FROM
- * MICHAL MIELCZYNSKI, IS ILLEGAL AND PROHIBITED BY LAW.
+ *
+ * RayPump Client software might be distributed under GNU GENERAL PUBLIC LICENSE
  *
  * THIS SOFTWARE IS PROVIDED BY MICHAL MIELCZYNSKI ''AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -26,26 +26,35 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::RayPumpWindow)
 {
+    /// @note we leave the constructor empty, in case we find other RayPump instance to wake up
+}
+
+RayPumpWindow::~RayPumpWindow()
+{
+    delete ui;
+}
+
+void RayPumpWindow::run()
+{
     uINFO << "RayPump Client" << G_VERSION << "(c) michal.mielczynski@gmail.com. All rights reserved.";
     m_simpleCryptKey = 1365559412; //:)
 
     ui->setupUi(this);
-//#ifndef QT_NO_DEBUG
-//    setWindowTitle("TEST VERSION");
-//#endif
+#ifndef QT_NO_DEBUG
+    setWindowTitle("TEST VERSION");
+#endif
 #if defined(Q_OS_MAC)
-    ui->menuBar->setNativeMenuBar(false);
+    ui->menuBar->setNativeMenuBar(true);
 #endif
     ui->progressBar->hide();
     ui->progressBarRender->hide();
     ui->progressBar->setMinimum(0);
     ui->progressBar->setMaximum(0);
     ui->actionConnect->setProperty("force", false);
-    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
-    setupLicenseAgreement();
 
+    setupLicenseAgreement();
     setupTrayIcon();
-    setupRsyncProcesses();
+    setupRsyncWrappers();
     setupLocalServer();
     setupRemoteClient();
     setupAutoconnection();
@@ -70,18 +79,18 @@ RayPumpWindow::RayPumpWindow(QWidget *parent) :
     setWindowFlags(flags);
 #endif
     assertSynchroDirectories();
+    cleanUpBufferDirectory();
 
     m_status = tr("Not connected");
     m_currentJob.clear();
     m_blenderAddonVersion = 0.0;
 
-
-
 }
 
-RayPumpWindow::~RayPumpWindow()
+void RayPumpWindow::handleInstanceWakeup(const QString &message)
 {
-    delete ui;
+    uINFO << message;
+    on_actionShow_triggered();
 }
 
 void RayPumpWindow::closeEvent(QCloseEvent *event)
@@ -97,7 +106,7 @@ void RayPumpWindow::closeEvent(QCloseEvent *event)
         }
     }
     else{
-        if (m_synchroInProgress){
+        if (m_sceneTransferManager->synchroInProgress()){
             QMessageBox msgBox;
             msgBox.setText(tr("Uploading in progress"));
             msgBox.setInformativeText(tr("Do you want to abort current scene transfer?"));
@@ -147,21 +156,17 @@ void RayPumpWindow::handleLocalMessage(const QByteArray &message)
 
     foreach (QString key, map.keys()){
         if (key == "SCHEDULE"){
-            if (m_remoteClient->accessHash() == ""){
+            if (!m_sceneTransferManager->isHashValid()){
                 uINFO << "Received job disconnected to the server";
                 m_localServer->sendRetry();
             } else
                 m_localServer->confirmSceneScheduled(transferScene(map.value(key).toString()));
         }
         else if (key == "CONNECTED"){
-            ui->statusBar->showMessage(tr("Blender connected"));
-            m_trayIcon->showMessage("RayPump", tr("Blender connected"));
             m_status = tr("Blender connected");
-            on_actionShow_triggered();
         }
         else if (key == "DISCONNECTED"){
             ui->statusBar->showMessage(tr("Blender disconnected"));
-            m_trayIcon->showMessage("RayPump", tr("Blender disconnected"));
             m_status = tr("Blender disconnected");
         }
         else if (key == "FORMAT"){
@@ -183,21 +188,25 @@ void RayPumpWindow::handleLocalMessage(const QByteArray &message)
         else if (key == "JOB_TYPE"){
             setJobType(map.value(key).toString());
         }
+        else if (key == "EXTERNAL_PATHS"){
+           m_currentJob.externalPaths = map.value(key).toStringList();
+        }
+        else if (key == "VIEW"){
+            if (!m_jobManager->lastReadyRenderPath().isEmpty()){
+                openRenderFolder(m_jobManager->lastReadyRenderPath());
+            }
+        }
         /// @todo more to come?
         else{
             uERROR << "unhandled command" << key;
         }
-
     }
 }
 
-void RayPumpWindow::handleRsyncSceneFinished(int exitCode, QProcess::ExitStatus exitStatus)
+void RayPumpWindow::handleRsyncSceneFinished(bool success)
 {
-    uINFO << "got exit code" << exitCode << exitStatus;
-    m_synchroInProgress = false;
-    if (exitCode == 0 && exitStatus == QProcess::NormalExit){
-        uINFO << "scene uploaded in" << m_rsyncTimer.elapsed()/1000 << "seconds";
-        m_trayIcon->showMessage("RayPump", tr("Uploaded in %1 s").arg(m_rsyncTimer.elapsed()/1000), QSystemTrayIcon::Information, 3000);
+    if (success){
+        m_trayIcon->showMessage("RayPump", tr("Uploaded in %1 s").arg(m_sceneTransferManager->elapsed()/1000), QSystemTrayIcon::Information, 3000);
         ui->statusBar->showMessage(tr("Transfer complete"));
         QVariantMap map;
         m_remoteClient->sendRayPumpMessage(CC_REQUEST_SCENE_TRANSFER_COMPLETE, map);
@@ -209,14 +218,14 @@ void RayPumpWindow::handleRsyncSceneFinished(int exitCode, QProcess::ExitStatus 
     ui->progressBar->reset();
     ui->progressBar->setMaximum(0);
     ui->progressBar->hide();
+    cleanUpBufferDirectory();
 }
 
-void RayPumpWindow::handleRsyncRendersFinished(int exitCode, QProcess::ExitStatus exitStatus)
+void RayPumpWindow::handleRsyncRendersFinished(bool success)
 {
-    if (exitCode == 0 && exitStatus == QProcess::NormalExit){
+    if (success){
         m_downloadTryCounter = 0;
         ui->progressBarRender->hide();
-        this->activateWindow();
         m_trayIcon->showMessage("RayPump", tr("Renders downloaded"), QSystemTrayIcon::Information, 10000);
         ui->statusBar->showMessage(tr("Download complete"));
         m_status = tr("Download complete");
@@ -226,35 +235,11 @@ void RayPumpWindow::handleRsyncRendersFinished(int exitCode, QProcess::ExitStatu
         m_remoteClient->sendRayPumpMessage(CC_REQUEST_RENDERS_CLEANUP, map);
         setRenderFilesPermission();
 
-        if (m_totalJobTimer.isValid()){
-            int secs = m_totalJobTimer.elapsed()/1000;
-            uINFO << QString("total render time: %1:%2").arg(secs/60).arg(secs%60);
-            m_totalJobTimer.invalidate();
-        }
-        else{
-            uERROR << "total job timer is invalid";
-        }
     }
     else if (m_downloadTryCounter > 3){
-        switch (exitCode){
-        case 5:
-            ui->statusBar->showMessage(tr("Download auth failed"));
-            uERROR << "rsync auth failed";
-            break;
-        case 23:
-            ui->statusBar->showMessage(tr("No renders available"));
-            m_status = tr("No renders available");
-            uINFO << "no files to rsync";
-            break;
-        case 14:
-            uERROR << "error in rsync protocol data stream (code 12) - connection unexpectedly closed";
-            break;
-        default:
-            ui->statusBar->showMessage(tr("Download failed"));
-            m_status = tr("Download failed");
-            uERROR << "failed to download renders" << exitCode << exitStatus;
-            break;
-        }
+        ui->statusBar->showMessage(tr("Download failed"));
+        m_status = tr("Download failed");
+        uERROR << "failed to download renders";
     }
     else{
         m_downloadTryCounter++;
@@ -281,17 +266,14 @@ void RayPumpWindow::handleConnectionStatus(bool connected, const QString &msg)
     }
 }
 
-void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &arg)
-{
-    if (!arg.isValid()){
-        uINFO << "invalid argument";
-        return;
-    }
+void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariantMap &arg)
+{    
     switch(command){
     case CC_CONFIRM_AUTH:
     {
+        uINFO << "auth confirmation required" << arg.value("reason");
         QVariantMap args;
-        args["name"] = ui->lineEditUserName->text();
+        args["name"] = ui->lineEditUserName->text().toLower();
         args["password"] = ui->lineEditUserPass->text();
 #if defined(Q_OS_MAC)
         args["platform"] = "mac";
@@ -306,8 +288,7 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
         break;
     case CC_CONFIRM_VALIDATED:
     {
-        QVariantMap map  = arg.toMap();
-        if (map.value("valid").toBool()){
+        if (arg.value("valid").toBool()){
             ui->actionConnect->setChecked(true);
             m_trayIcon->setIcon(QIcon(":/icons/icons/logo_small.ico"));
         }
@@ -316,6 +297,9 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
             ui->actionConnect->setChecked(false);
             ui->statusBar->showMessage(tr("Authentication failed"));
         }
+        QByteArray accessHash = arg.value("hash").toByteArray();
+        m_rendersTransferManager->setAccessHash(accessHash);
+        m_sceneTransferManager->setAccessHash(accessHash);
 
         QVariantMap empty;
         m_remoteClient->sendRayPumpMessage(CC_REQUEST_READQUEUE, empty); // reads also Render Points
@@ -324,7 +308,7 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
     }
     case CC_CONFIRM_SCENE_PREPARED:
     {
-        QString jobName = arg.toMap().value("job_name").toString();
+        QString jobName = arg.value("job_name").toString();
         if (jobName.isEmpty()){
             uERROR << "no job name given";
             break;
@@ -335,7 +319,7 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
     case CC_CONFIRM_SCENE_SCHEDULED:
     {
         uINFO << "scene scheduled";
-        int seconds = (arg.toInt());
+        int seconds = arg.value("seconds", 0).toInt();
         ui->statusBar->showMessage(tr("Job scheduled"));
         m_status = tr("Job scheduled. Awaiting free resources...");
         if (seconds){
@@ -348,19 +332,21 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
         break;
     case CC_CONFIRM_SCENE_TESTING:
     {
-        QString sceneName = arg.toString();
+        QString sceneName = arg.value("scene_name").toString();
         ui->progressBarRender->setProperty("testing", true);
         m_trayIcon->showMessage("RayPump", tr("Testing: %1").arg(sceneName), QSystemTrayIcon::Information, 2000);
         m_status = tr("Testing scene %1").arg(sceneName);
         uINFO << "testing scene" << sceneName;
     }
         break;
+    case CC_CONFIRM_SCENE_READY:
+        handleSceneReady(arg.value("scene_name").toString());
+        break;
     case CC_CONFIRM_SCENE_RUNNING:
     {
-        QString sceneName = arg.toString();
+        QString sceneName = arg.value("scene_name").toString();
         uINFO << "scene confirmed (running)" << sceneName;
         if (!sceneName.isEmpty()){
-            m_jobStartTimes.insert(sceneName, QDateTime::currentDateTime());
             m_trayIcon->showMessage("RayPump", tr("Starting %1").arg(sceneName), QSystemTrayIcon::Information, 3000);
             m_status = tr("Rendering %1").arg(sceneName);
             uINFO << "rendering scene" << sceneName;
@@ -370,24 +356,24 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
         break;
     case CC_CONFIRM_DOWNLOAD_READY:
     {
-        //QString sceneName = arg.toString();
         uINFO << "download ready";
         transferRenders();
-        //calculateJobTime(sceneName);
     }
         break;
     case CC_CONFIRM_JOBLIMIT_EXCEEDED:
-        uERROR << "job limit exceeded" << arg.toInt();
+    {
+        int limit = arg.value("limit").toInt();
+        uERROR << "job limit exceeded" << limit;
         show();
         raise();
         activateWindow();
         m_trayIcon->showMessage("RayPump", tr("Queue limit reached"), QSystemTrayIcon::Warning);
         m_status = tr("Queue limit reached");
-        QMessageBox::warning(this, tr("RayPump limitation"), tr("User's jobs queue is limited<br><br>Please wait for previously scheduled job(s) to complete").arg(arg.toInt()));
+        QMessageBox::warning(this, tr("RayPump limitation"), tr("User's jobs queue is limited<br><br>Please wait for previously scheduled job(s) to complete").arg(limit));
+    }
         break;
     case CC_CONFIRM_DAILYJOBLIMIT_EXCEEDED:
     {
-        QVariantMap map = arg.toMap();
         show();
         raise();
         activateWindow();
@@ -396,22 +382,21 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
         QMessageBox::warning(this,
                              tr("RayPump limitation"),
                              tr("%1: daily job count exceeded limit (%2 of %3)")
-                             .arg(map.value("package").toString().toUpper())
-                             .arg(map.value("counter").toInt())
-                             .arg(map.value("limit").toInt()));
+                             .arg(arg.value("package").toString().toUpper())
+                             .arg(arg.value("counter").toInt())
+                             .arg(arg.value("limit").toInt()));
     }
         break;
     case CC_ERROR_SCENE_NOT_FOUND:
     {
-        QString sceneName = arg.toString();
+        QString sceneName = arg.value("scene_name").toString();
         QMessageBox::warning(this, tr("RayPump error"), tr("Failed to start scheduled scene: %1<br><br>Try to re-send your job. If problem presists, please report a bug").arg(sceneName));
     }
         break;
     case CC_ERROR_SCENE_TEST_FAILED:
     {
-        QVariantMap map = arg.toMap();
-        QString sceneName = map.value("scene_name").toString();
-        QString reason = map.value("reason").toString();
+        QString sceneName = arg.value("scene_name").toString();
+        QString reason = arg.value("reason").toString();
         show();
         raise();
         activateWindow();
@@ -430,17 +415,20 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
     }
         break;    
     case CC_CONFIRM_GENERAL_INFO:
-        m_trayIcon->showMessage("RayPump Farm message:", arg.toString(), QSystemTrayIcon::Warning);
+        m_trayIcon->showMessage("RayPump Farm message:", arg.value("message").toString(), QSystemTrayIcon::Warning);
         break;
     case CC_CONFIRM_IMPORTANT_INFO:
-        QMessageBox::warning(this, tr("RayPump Farm message"), arg.toString());
+        QMessageBox::warning(this, tr("RayPump Farm message"), arg.value("message").toString());
         break;
     case CC_CONFIRM_QUEUE_STATUS:
     {
-        QVariantMap jobs = arg.toMap();
+        QVariantMap jobs = arg;
         jobs.remove("command");
         m_jobManager->setJobs(jobs);
     }
+        break;
+    case CC_CONFIRM_QUEUE_PROGRESS:
+        handleOtherUserJobProgress(arg.value("queue_progress").toDouble());
         break;
     default:
         uERROR << "unhandled command" << command << arg;
@@ -450,6 +438,10 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariant &ar
 
 void RayPumpWindow::handleSceneReady(const QString &sceneName)
 {
+    if (sceneName.isEmpty()){
+        uERROR << "empty scene name";
+        return;
+    }
     uINFO << "scene ready" << sceneName;
     ui->statusBar->showMessage(tr("Downloading..."));
     transferRenders();
@@ -571,32 +563,21 @@ void RayPumpWindow::setupTrayIcon()
 }
 
 /// @note perhaps having rsync as library here would be more platform-independent and better in general. This might be implemented later.
-void RayPumpWindow::setupRsyncProcesses()
+void RayPumpWindow::setupRsyncWrappers()
 {
-#if defined(Q_OS_WIN)
-    m_rsyncFilePath = QFileInfo("rsync/rsync.exe");
-#elif defined(Q_OS_LINUX)
-    m_rsyncFilePath = QFileInfo("/usr/bin/rsync");
-#elif defined(Q_OS_MAC)
-    m_rsyncFilePath = QFileInfo("/usr/bin/rsync");
-#endif
-    if (!m_rsyncFilePath.isFile()){
-        uERROR << "cannot find rsync binary. Cannot continue" << m_rsyncFilePath.absoluteFilePath();
-        QMessageBox::warning(this, tr("RayPump failed"), tr("Installation is broken, please re-install RayPump client"));
-        exit(EXIT_FAILURE);
-    }
-    m_rsyncSceneProcess = new QProcess(this);
-    m_rsyncSceneProcess->setReadChannel(QProcess::StandardOutput);
-    m_rsyncSceneProcess->setProcessChannelMode(QProcess::MergedChannels);
-    connect(m_rsyncSceneProcess, SIGNAL(finished(int,QProcess::ExitStatus)), SLOT(handleRsyncSceneFinished(int,QProcess::ExitStatus)));
-    connect(m_rsyncSceneProcess, SIGNAL(readyReadStandardOutput()), SLOT(handleReadyReadRsyncSceneOutput()));
+    m_sceneTransferManager = new RsyncWrapper(this);
+    connect(m_sceneTransferManager, SIGNAL(rsyncOutput(QByteArray)), SLOT(handleReadyReadRsyncSceneOutput(QByteArray)));
+    connect(m_sceneTransferManager, SIGNAL(finished(bool)), SLOT(handleRsyncSceneFinished(bool)));
 
+    m_rendersTransferManager = new RsyncWrapper(this);
+    connect(m_rendersTransferManager, SIGNAL(rsyncOutput(QByteArray)), SLOT(handleReadyReadRsyncRendersOutput(QByteArray)));
+    connect(m_rendersTransferManager, SIGNAL(finished(bool)), SLOT(handleRsyncRendersFinished(bool)));
 
-    m_rsyncRendersProcess = new QProcess(this);
-    m_rsyncRendersProcess->setReadChannel(QProcess::StandardOutput);
-    m_rsyncRendersProcess->setProcessChannelMode(QProcess::MergedChannels);
-    connect(m_rsyncRendersProcess, SIGNAL(finished(int,QProcess::ExitStatus)), SLOT(handleRsyncRendersFinished(int,QProcess::ExitStatus)));
-    connect(m_rsyncRendersProcess, SIGNAL(readyReadStandardOutput()), SLOT(handleReadyReadRsyncRendersOutput()));
+//    m_rsyncRendersProcess = new QProcess(this);
+//    m_rsyncRendersProcess->setReadChannel(QProcess::StandardOutput);
+//    m_rsyncRendersProcess->setProcessChannelMode(QProcess::MergedChannels);
+//    connect(m_rsyncRendersProcess, SIGNAL(finished(int,QProcess::ExitStatus)), SLOT(handleRsyncRendersFinished(int,QProcess::ExitStatus)));
+//    connect(m_rsyncRendersProcess, SIGNAL(readyReadStandardOutput()), SLOT(handleReadyReadRsyncRendersOutput()));
 }
 
 void RayPumpWindow::setupLocalServer()
@@ -611,9 +592,7 @@ void RayPumpWindow::setupRemoteClient()
 {
     m_remoteClient = new RemoteClient(this);
     connect(m_remoteClient, SIGNAL(connected(bool,QString)), SLOT(handleConnectionStatus(bool,QString)));
-    connect(m_remoteClient, SIGNAL(receivedRayPumpMessage(CommandCode,QVariant)), SLOT(handleRayPumpCommand(CommandCode,QVariant)));
-    connect(m_remoteClient, SIGNAL(sceneReady(QString)), SLOT(handleSceneReady(QString)));
-    m_synchroInProgress = false;
+    connect(m_remoteClient, SIGNAL(receivedRayPumpMessage(CommandCode,QVariantMap)), SLOT(handleRayPumpCommand(CommandCode,QVariantMap)));
     m_downloadTryCounter = 0;
 }
 
@@ -651,20 +630,20 @@ bool RayPumpWindow::transferScene(const QFileInfo &sceneFileInfo)
         return false;
     }
 
-    if (m_synchroInProgress){
+    if (m_sceneTransferManager->synchroInProgress()){
         m_trayIcon->showMessage(tr("RayPump is uploading"), tr("Please wait until previous job get uploaded"), QSystemTrayIcon::Warning);
         uERROR << "synchronization already in progress. Aborting...";
         return false;
     }
 
-    if(m_blenderAddonVersion < (qreal)G_VERSION){
-        uERROR << m_blenderAddonVersion << "instead of" << G_VERSION << "outdated Blender add-on version. Aborting...";
+    if(m_blenderAddonVersion < (qreal)G_ALLOWED_ADDON_VERSION){
+        uERROR << m_blenderAddonVersion << "instead of" << G_ALLOWED_ADDON_VERSION << "outdated Blender add-on version. Aborting...";
         QMessageBox::warning(this, tr("RayPump error"), tr("Your Blender's add-on version is outdated.<br><br>Please install the newest version from current RayPump directory"));
         return false;
     }
 
-    if (m_rsyncSceneProcess->state() != QProcess::NotRunning){
-        uERROR << "wrong process status (running?)";
+    if (m_sceneTransferManager->isRunning()){
+        uERROR << "wrong process status (running/starting)";
         ui->statusBar->showMessage("Wrong process status");
         return false;
     }
@@ -690,54 +669,23 @@ bool RayPumpWindow::transferScene(const QFileInfo &sceneFileInfo)
     arg["job_type"] = m_currentJob.jobType;
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_SCENE_PREPARE, arg);
 
-    QStringList env = QProcess::systemEnvironment();
-    env << "RSYNC_PASSWORD=" + m_remoteClient->accessHash();
 
-    QStringList arguments;
+    QString destinationDirectory = "rsync://" + ui->lineEditUserName->text().toLower() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text().toLower() + "/BUFFER/" + sceneFileInfo.fileName() + "/";
+    m_sceneTransferManager->buffer(Globals::BUFFER_DIRECTORY, destinationDirectory);
 
-#ifdef Q_OS_WIN
-
-    if (!m_jobManager->uploadLimit()){
-        arguments << "--progress" << "-z" << "--compress-level=9" << sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
-        uINFO << arguments;
-    }
-    /// @todo unused
-    else{
-        uINFO << "limiting upload to" << m_jobManager->uploadLimit() << "KB/s";
-        arguments << "--progress" << "-z" << "--compress-level=9" << QString("--bwlimit=%1").arg(m_jobManager->uploadLimit())  << Globals::BUFFER_DIRECTORY + "/" + sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
-    }
-#else
-    if (Globals::SERVER_VIRTUALIZED){
-        QHostInfo info = QHostInfo::fromName(Globals::SERVER_HOST_NAME);
-        if (info.addresses().isEmpty()){
-            uERROR << "cannot get IP address for" << Globals::SERVER_HOST_NAME;
-            return false;
-        }
-        arguments << "--progress" << "-z" << "--compress-level=9" << Globals::BUFFER_DIRECTORY + "/" + sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_HOST_NAME + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
-    }
-    else{
-        arguments << "--progress" << "-z" << "--compress-level=9" << Globals::BUFFER_DIRECTORY + "/" + sceneFileInfo.fileName() << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/share/" + ui->lineEditUserName->text() + "/BUFFER/";
-    }
-#endif
-
-    m_rsyncTimer.start();
-    m_totalJobTimer.start();
-    m_rsyncSceneProcess->setEnvironment(env);
-    m_rsyncSceneProcess->setWorkingDirectory(Globals::BUFFER_DIRECTORY);
-    m_rsyncSceneProcess->start(m_rsyncFilePath.absoluteFilePath(), arguments);
-    if (!m_rsyncSceneProcess->waitForStarted()){
-        uERROR << "failed to start rsync process for scene";
-        m_rsyncTimer.invalidate();
-        return false;
+    foreach (QString externalPath, m_currentJob.externalPaths){
+        m_sceneTransferManager->buffer(externalPath, destinationDirectory);
     }
 
-    ui->statusBar->showMessage(tr("Transferring %1").arg(sceneFileInfo.baseName()));
-    ui->progressBar->show();
-    ui->progressBar->reset();
-    m_status = tr("Transfering scene %1").arg(sceneFileInfo.baseName());
+    if (m_sceneTransferManager->run()){
+        ui->statusBar->showMessage(tr("Transferring %1").arg(sceneFileInfo.baseName()));
+        ui->progressBar->show();
+        ui->progressBar->reset();
+        m_status = tr("Transfering scene %1").arg(sceneFileInfo.baseName());
+        return true;
+    }
 
-    m_synchroInProgress = true;
-    return true;
+    return false;
 }
 
 void RayPumpWindow::transferRenders()
@@ -747,22 +695,12 @@ void RayPumpWindow::transferRenders()
         return;
     }
 
-    if (m_rsyncRendersProcess->state() == QProcess::Running){
-        uWARNING << "process is still running. Aborting...";
-        return;
-    }
+    m_rendersTransferManager->buffer(
+                "rsync://" + ui->lineEditUserName->text().toLower() + "@" + Globals::SERVER_IP + "/renders/" + ui->lineEditUserName->text().toLower() + "/",
+                Globals::RENDERS_DIRECTORY);
 
-    QStringList env = QProcess::systemEnvironment();
-    env << "RSYNC_PASSWORD=" + m_remoteClient->accessHash();
-    m_rsyncRendersProcess->setEnvironment(env);
-    m_rsyncRendersProcess->setWorkingDirectory(Globals::RENDERS_DIRECTORY);
-
-    QStringList arguments;
-    arguments << "--progress" << "--perms"  << "--exclude=*.blend" << "-zr" << "--compress-level=9" << "rsync://" + ui->lineEditUserName->text() + "@" + Globals::SERVER_IP + "/renders/" + ui->lineEditUserName->text() + "/" << "./";
-
-    m_rsyncRendersProcess->start(m_rsyncFilePath.absoluteFilePath(), arguments);
-    if (!m_rsyncRendersProcess->waitForStarted()){
-        uERROR << "failed to start rsync process for renders";
+    if (!m_rendersTransferManager->run()){
+        uERROR << "failed to run transfer manager";
     }
     else{
         ui->statusBar->showMessage(tr("Starting download..."));
@@ -788,21 +726,13 @@ void RayPumpWindow::handleRenderProgressChanged(int progress, int total)
 
 }
 
-void RayPumpWindow::handleReadyReadRsyncSceneOutput()
+void RayPumpWindow::handleReadyReadRsyncSceneOutput(const QByteArray output)
 {
-
-    if (m_rsyncSceneProcess->state() != QProcess::Running){
-        uERROR << "scene sync process is not running";
-        ui->progressBar->setMaximum(0);
-        ui->progressBar->reset();
-        return;
-    }
-
-    QByteArray output = m_rsyncSceneProcess->readAllStandardOutput().trimmed();
     int indexOfPercent = output.indexOf("%");
     if (indexOfPercent ==-1){
         ui->progressBar->setMaximum(0);
         ui->progressBar->reset();
+        ui->statusBar->showMessage(tr("transfering: %1").arg(QString(output)));
         return;
     }
 
@@ -812,14 +742,8 @@ void RayPumpWindow::handleReadyReadRsyncSceneOutput()
 
 }
 
-void RayPumpWindow::handleReadyReadRsyncRendersOutput()
+void RayPumpWindow::handleReadyReadRsyncRendersOutput(const QByteArray output)
 {
-    if (m_rsyncRendersProcess->state() != QProcess::Running){
-        uERROR << "renders sync process is not running";
-        return;
-    }
-
-    QByteArray output = m_rsyncRendersProcess->readAllStandardOutput().trimmed();
     int indexOfPercent = output.indexOf("%");
     if (indexOfPercent ==-1){
         return;
@@ -849,18 +773,54 @@ void RayPumpWindow::handleRenderPointsChanged(int renderPoints)
     }
 }
 
+void RayPumpWindow::handleOtherUserJobProgress(double progress)
+{
+    if (!progress){
+        return;
+    }
+
+    int waitValue = 100 - (progress * 100.0);
+    ui->progressBarRender->setMaximum(100);
+    ui->progressBarRender->setValue(waitValue);
+
+    ui->statusBar->showMessage(tr("Awaiting free farm resources"));
+}
+
 void RayPumpWindow::assertSynchroDirectories()
 {
-    QDir path(QDir::homePath());
+    QSettings settings;
 
-    if (!path.mkpath(Globals::RENDERS_DIRECTORY)){
-        QMessageBox::critical(0, "RayPump failed", "Failed to create renders directory " + Globals::RENDERS_DIRECTORY);
-        Globals::RENDERS_DIRECTORY = "RayPump";
-        if (!path.mkpath(Globals::RENDERS_DIRECTORY)){   //if the specified directory isn't avaliable, use <Home>/RayPump
-            QMessageBox::critical(0, "RayPump failed", "Failed to create directory");
-            exit(EXIT_FAILURE);
-        }
+    Globals::RENDERS_DIRECTORY = settings.value("renders_path", QDir::homePath() + "/RayPump").toString();
+    QDir rendersPath(Globals::RENDERS_DIRECTORY);
+    if (!rendersPath.mkpath(Globals::RENDERS_DIRECTORY)){
+        QMessageBox::critical(0, "", tr("Failed to read/create renders folder %1").arg(Globals::RENDERS_DIRECTORY));
     }
+
+    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
+
+    /// @test
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    QString username;
+#ifdef Q_OS_WIN
+    username = env.value("USERNAME");
+#else
+    username = env.value("USER");
+#endif
+
+    QDir path(QDir::homePath());
+    Globals::BUFFER_DIRECTORY = path.tempPath() + "/raypump-" + username;
+
+    if (!path.mkpath(Globals::BUFFER_DIRECTORY)){
+        QMessageBox::critical(0, "RayPump failed", "Failed to create buffer directory" + Globals::BUFFER_DIRECTORY);
+        exit(EXIT_FAILURE);
+    }
+    /// @endcode
+
+}
+
+void RayPumpWindow::cleanUpBufferDirectory()
+{
+    clearDir(Globals::BUFFER_DIRECTORY);
 }
 
 /// @todo doesn't work yet (should fix Windows' rsync bug that set persmissions to public)
@@ -884,8 +844,11 @@ void RayPumpWindow::setRenderFilesPermission()
 
 }
 
+/// @todo
 void RayPumpWindow::calculateJobTime(const QString &sceneName)
 {
+    /// @deprecated
+    /*
     if (sceneName.isEmpty()){
         uWARNING << "empty scene name. Aborting...";
         return;
@@ -914,7 +877,7 @@ void RayPumpWindow::calculateJobTime(const QString &sceneName)
         m_trayIcon->showMessage("RayPump", tr("Job(s) rendered in %1 h %2 min %3 sec").arg(hours).arg(minutes).arg(seconds));
         ui->statusBar->showMessage(tr("Job(s) rendered in %1 h %2 min %3 sec").arg(hours).arg(minutes).arg(seconds));
     }
-
+    */
 }
 
 bool RayPumpWindow::checkMalformedUsername(const QString &userName)
@@ -1033,7 +996,12 @@ void RayPumpWindow::on_actionAbout_triggered()
 #else
     QMessageBox::about(this,
                        tr("About RayPump"),
-                       tr("<b>RayPump Online Cycles Accelerator for Blender</b><br><a href=http://www.raypump.com>www.RayPump.com</a><br><br>version %1 '%4'<br><br>by michal.mielczynski@gmail.com<br><br>User: %3<br><br>This version uses Render Points system")
+                       tr("\
+                          <b>RayPump<br><br>\
+                          Online Cycles Accelerator for Blender</b><br>\
+                          <a href=http://www.raypump.com>www.RayPump.com</a><br><br>\
+                          version %1 '%4'<br><br>\
+                          you: %3<br>")
                        .arg(G_VERSION)
                        .arg(ui->lineEditUserName->text())
                        .arg(G_VERSION_NAME)
@@ -1101,12 +1069,12 @@ void RayPumpWindow::on_lineEditUserName_returnPressed()
 
 void RayPumpWindow::on_actionAdd_Render_Points_triggered()
 {
-    QDesktopServices::openUrl(QUrl("http://raypump.com/index.php/buy/renderpoints"));
+    QDesktopServices::openUrl(QUrl("http://raypump.com/pro"));
 }
 
 void RayPumpWindow::on_actionCancel_uploading_triggered()
 {
-    if (m_rsyncSceneProcess->state() != QProcess::Running ){
+    if (!m_sceneTransferManager->isRunning()){
         uINFO << "rsync not running";
         return;
     }
@@ -1126,7 +1094,7 @@ void RayPumpWindow::on_actionCancel_uploading_triggered()
         break;
     }
 
-    m_rsyncSceneProcess->kill();
+    m_sceneTransferManager->kill();
 }
 
 void RayPumpWindow::on_tableWidget_cellDoubleClicked(int row, int column)
@@ -1138,12 +1106,14 @@ void RayPumpWindow::on_tableWidget_cellDoubleClicked(int row, int column)
 
 void RayPumpWindow::on_pushButtonCleanUp_clicked()
 {
+    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
     QVariantMap args;
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_CLEANUPDONEJOBS, args);
 }
 
 void RayPumpWindow::on_pushButtonRefresh_clicked()
 {
+    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
     QVariantMap args;
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_READQUEUE, args);
 }
@@ -1198,19 +1168,45 @@ void RayPumpWindow::on_pushButtonCancelJob_clicked()
     QVariantMap args;
     QStringList jobsList = jobs.toList();
     args.insert("job_name", jobsList);
+
+    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_CANCELJOB, args);
     on_actionCancel_uploading_triggered();
 }
 
 void RayPumpWindow::on_pushButtonRenderPath_clicked()
 {
+    QSettings settings;
     QFileDialog dialog(this);
+
     dialog.setFileMode(QFileDialog::Directory);
     dialog.setOption(QFileDialog::ShowDirsOnly, true);
     QString newPath = dialog.getExistingDirectory(this, tr("Choose directory"), Globals::RENDERS_DIRECTORY, QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     if (newPath != "")
         Globals::RENDERS_DIRECTORY = newPath;
-    QSettings settings;
-    settings.setValue("renders_directory", Globals::RENDERS_DIRECTORY);
-    ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
+
+    settings.setValue("renders_path", Globals::RENDERS_DIRECTORY);
+    assertSynchroDirectories();
+}
+
+void RayPumpWindow::on_spinBoxUploadLimit_valueChanged(int arg1)
+{
+    m_sceneTransferManager->setTransferLimit(arg1);
+}
+
+void RayPumpWindow::on_actionCleanRemoteBuffer_triggered()
+{
+    QMessageBox msg;
+    msg.setText(tr("Are you sure?"));
+    msg.setInformativeText(tr("Clearing remote buffer will force uploading scenes from scratch. First upload might take a while."));
+    msg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    int ret = msg.exec();
+    if (ret != QMessageBox::Yes){
+        uINFO << "Aborted";
+        return;
+    }
+
+    QVariantMap args;
+    m_remoteClient->sendRayPumpMessage(CC_REQUEST_CLEANUPBUFFER, args);
+
 }

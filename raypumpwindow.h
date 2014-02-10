@@ -1,14 +1,31 @@
+/* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
+ *
+ *
+ * RayPump Client software might be distributed under GNU GENERAL PUBLIC LICENSE
+ *
+ * THIS SOFTWARE IS PROVIDED BY MICHAL MIELCZYNSKI ''AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+ * EVENT SHALL MICHAL MIELCZYNSKI OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+ * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation
+ * are those of the authors and should not be interpreted as representing
+ * official policies, either expressed or implied, of Michal Mielczynski.
+ */
+
 #ifndef RAYPUMPWINDOW_H
 #define RAYPUMPWINDOW_H
 
 #include <QMainWindow>
 #include <QSystemTrayIcon>
-#include <QProcess>
-#include <QFileInfo>
-#include <QMessageBox>
 #include <QDir>
 #include <QFile>
-#include <QElapsedTimer>
 #include <QDesktopServices>
 #include <QUrl>
 #include <QCloseEvent>
@@ -26,33 +43,45 @@
 #include "json/json.h"
 #include "simplecript.h"
 #include "jobmanager.h"
+#include "rsyncwrapper.h"
+#include "fileops.h"
 
 /** @todo GENERAL IDEAS/BUGS
+
  *1)
- * Upcoming version should have integrated JobManager - so, no more separated windows, instead expandable main window:
- * - by default RayPump window looks much like its current version: lean and mean
- * - by using the Advanced/Expert/Expand toggle button we expand the window - now it looks like combined JobManager and main window, with combined functionality;
- * - we keep the user's choice in QSettings
+ *Integrated rsync (difficulty: hard)
+ * - current separate rsync binary (for Windows) causes some problems;
+ * - being Linux/Mac binary dependent also isn't the best solution;
+ * Making custom rsync based class inside RayPump code could help to solve stability and security issues
  *
  *2)
- * Customized RENDERS directory:
- * - user can specify destination directory for renders;
- * - we keep the user's choice in QSettings
- *
- *3)
- * Non-ASCII paths/names cause problems.
+ * Non-ASCII paths/names cause problems (work in progress, by Tiago Shibata) (difficulty: medium)
  * - scene names should be converted to ASCII during the copying to BUFFER;
  * - RayPump path passed to Blender should handle UTF-8;
  *
- *4)
- * Auto-lauch
+ *3)
+ * Auto-lauch (difficulty: easy)
  * - running the RayPump client should be initialized from Blender panel to avoid application switching
  * - path of the RayPump binary can be set (and stored) in Blender settings.
  *
- *5)
- * Support usage by multiple users
- * - Opening RayPump inside one user and launching blener inside another creates a successful
+ *4)
+ * Support usage by multiple users (difficulty: unknown)
+ * - Opening RayPump inside one user and launching Blender inside another creates a successful
  *   connection, but Linux doesn't allow sending data between them
+ *
+ *5)
+ * Automatic software upgrade (difficulty: hard)
+ * - despite the outdated warnings, RayPump client should download and upgrade automatically
+ *
+ *6)
+ * "Back to the Blender" (difficulty: hard)
+ * - just an idea, but it would be neat thing to have: once the rendered image is ready and downloaded it gets imported
+ *   back to Blender. In perfect world, this online rendered image would behave just like local render result (having all the
+ *   features inside Blender)
+ *
+ *7)
+ * Fixing the copyright notice (difficulty: trivial)
+ * - header should contain GPL notice instead of illegal distribution stuff
  */
 
 namespace Ui {
@@ -66,6 +95,7 @@ class RayPumpWindow : public QMainWindow
 public:
     explicit RayPumpWindow(QWidget *parent = 0);
     ~RayPumpWindow();
+    void run();
 
     /// @note has to be synchronized with the same enum on server side
     enum Package {
@@ -87,7 +117,11 @@ public:
         int frameCurrent;
         int frameStart;
         int frameEnd;
+        QStringList externalPaths;
     };
+
+public slots:
+    void handleInstanceWakeup(const QString &message);
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -95,10 +129,10 @@ protected:
 
 private slots:
     void handleLocalMessage(const QByteArray &message);
-    void handleRsyncSceneFinished(int exitCode, QProcess::ExitStatus exitStatus);
-    void handleRsyncRendersFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    void handleRsyncSceneFinished(bool success);
+    void handleRsyncRendersFinished(bool success);
     void handleConnectionStatus(bool connected, const QString &msg);
-    void handleRayPumpCommand(CommandCode command, const QVariant &arg);
+    void handleRayPumpCommand(CommandCode command, const QVariantMap &arg);
     void handleSceneReady(const QString &sceneName);
     void handleTrayIconClicked(QSystemTrayIcon::ActivationReason reason);
     void handleTrayIconMessageClicked();
@@ -106,9 +140,10 @@ private slots:
     void transferRenders();
     void handleJobManagerStatusBarMessage(const QString &message);
     void handleRenderProgressChanged(int progress, int total);
-    void handleReadyReadRsyncSceneOutput();
-    void handleReadyReadRsyncRendersOutput();
+    void handleReadyReadRsyncSceneOutput(const QByteArray output);
+    void handleReadyReadRsyncRendersOutput(const QByteArray output);
     void handleRenderPointsChanged(int renderPoints);
+    void handleOtherUserJobProgress(double progress);
 
     void on_lineEditUserPass_returnPressed();
     void on_actionConnect_toggled(bool checked);
@@ -127,21 +162,22 @@ private slots:
     void on_pushButtonCleanUp_clicked();
     void on_pushButtonRefresh_clicked();
     void on_pushButtonConnect_clicked();
-
     void on_groupBoxAdvancedMode_toggled(bool toggled);
-
     void on_pushButtonCancelJob_clicked();
     void on_pushButtonRenderPath_clicked();
+    void on_spinBoxUploadLimit_valueChanged(int arg1);
+    void on_actionCleanRemoteBuffer_triggered();
 
 private:
     void setupTrayIcon();
-    void setupRsyncProcesses();
+    void setupRsyncWrappers();
     void setupLocalServer();
     void setupRemoteClient();
     void setupAutoconnection();
     void setupJobManager();
     bool transferScene(const QFileInfo &sceneFileInfo);
     void assertSynchroDirectories();
+    void cleanUpBufferDirectory();
     void setRenderFilesPermission();
     void calculateJobTime(const QString &sceneName);
     bool checkMalformedUsername(const QString &userName);
@@ -156,13 +192,9 @@ private:
     JobManager *m_jobManager;
     QSystemTrayIcon *m_trayIcon;
     QMenu *m_trayIconMenu;
-    QProcess *m_rsyncSceneProcess, *m_rsyncRendersProcess;
-    QFileInfo m_rsyncFilePath;
-    QElapsedTimer m_rsyncTimer, m_totalJobTimer;
-    bool m_synchroInProgress;
+    RsyncWrapper *m_sceneTransferManager, *m_rendersTransferManager;
     bool m_wantToQuit;
     quint64 m_simpleCryptKey;
-    QMap<QString,QDateTime> m_jobStartTimes;
     int m_downloadTryCounter;
     QString m_status;
     int m_renderPoints;

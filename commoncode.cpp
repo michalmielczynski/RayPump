@@ -1,7 +1,7 @@
-/* Copyright 2013 Michal Mielczynski. All rights reserved.
+/* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
  *
- * DISTRIBUTION OF THIS SOFTWARE, IN ANY FORM, WITHOUT WRITTEN PERMISSION FROM
- * MICHAL MIELCZYNSKI, IS ILLEGAL AND PROHIBITED BY LAW.
+ *
+ * RayPump Client software might be distributed under GNU GENERAL PUBLIC LICENSE
  *
  * THIS SOFTWARE IS PROVIDED BY MICHAL MIELCZYNSKI ''AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -22,8 +22,8 @@
 #include "commoncode.h"
 
 bool Globals::SERVER_VIRTUALIZED = false;
-QString Globals::SERVER_HOST_NAME  = "ec2-54-202-0-207.us-west-2.compute.amazonaws.com"; // used only if Globals::SERVER_VIRTUALIZED is true
+QString Globals::SERVER_HOST_NAME  = ""; // used only if Globals::SERVER_VIRTUALIZED is true
 /// @todo this IP should be read from http://raypump.com/headnode.txt before we actually try to connect
 QString Globals::SERVER_IP  = "185.7.171.251"; // used only if Globals::SERVER_VIRTUALIZED is false
-QString Globals::BUFFER_DIRECTORY;
-QString Globals::RENDERS_DIRECTORY;
+QString Globals::BUFFER_DIRECTORY = QApplication::applicationDirPath() + "/BUFFER";
+QString Globals::RENDERS_DIRECTORY = "RENDERS";

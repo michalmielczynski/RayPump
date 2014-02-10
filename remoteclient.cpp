@@ -1,3 +1,24 @@
+/* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
+ *
+ *
+ * RayPump Client software might be distributed under GNU GENERAL PUBLIC LICENSE
+ *
+ * THIS SOFTWARE IS PROVIDED BY MICHAL MIELCZYNSKI ''AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+ * EVENT SHALL MICHAL MIELCZYNSKI OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+ * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation
+ * are those of the authors and should not be interpreted as representing
+ * official policies, either expressed or implied, of Michal Mielczynski.
+ */
+
 #include "remoteclient.h"
 
 RemoteClient::RemoteClient(QObject *parent) :
@@ -45,7 +66,6 @@ void RemoteClient::sendRayPumpMessage(CommandCode command, QVariantMap &args)
     out << (quint16)(block.size() - sizeof(quint16));
 
     m_tcpSocket->write(block);
-//    m_tcpSocket->flush();
     if (!m_tcpSocket->waitForBytesWritten()){
         uERROR << "wait for bytes written failed";
     }
@@ -70,6 +90,8 @@ void RemoteClient::handleReadyRead()
         return;
     }
 
+    QApplication::restoreOverrideCursor();
+
     QByteArray data;
     in >> data;
 
@@ -88,18 +110,15 @@ void RemoteClient::handleReadyRead()
     }
 
     CommandCode command = (CommandCode)(result.value("command").toInt());
-    /// @badcode switch here is pretty inconsistent.
-    /// Another switch in main window is required anyway, so it might be better idea just to do the basic check and redirect the input with single emit
+
     switch (command){
-    case CC_CONFIRM_AUTH:
-        emit receivedRayPumpMessage(command, result.value("reason"));
-        break;
+
     case CC_CONFIRM_VALIDATED:
     {
         bool validated = result.value("valid").toBool();
         if (validated){
-            m_accessHash = result.value("hash").toByteArray();
-            if (m_accessHash.isEmpty()){
+            QByteArray accessHash = result.value("hash").toByteArray();
+            if (accessHash.isEmpty()){
                 uERROR << "empty access hash";
             }
             else{
@@ -112,51 +131,14 @@ void RemoteClient::handleReadyRead()
         emit receivedRayPumpMessage(command, result);
     }
         break;
-    case CC_CONFIRM_SCENE_SCHEDULED: ////
-        emit receivedRayPumpMessage(command, result.value("seconds", 0));
-        break;
-    case CC_CONFIRM_SCENE_PREPARED:
-        emit receivedRayPumpMessage(command, result);
-        break;
-    case CC_CONFIRM_SCENE_READY:
-    {
-        QString sceneName = result.value("scene_name").toString();
-        if (sceneName.isEmpty()){
-            uERROR << "empty scene name";
-        }
-        else{
-            emit sceneReady(sceneName);
-        }
-    }
-        break;
-    case CC_CONFIRM_SCENE_TESTING: case CC_CONFIRM_SCENE_RUNNING:
-    {
-        QString sceneName = result.value("scene_name").toString();
-        emit receivedRayPumpMessage(command, sceneName);
-    }
-        break;
-    case CC_CONFIRM_DOWNLOAD_READY:
-    {
-        bool valid = result.value("ready").toBool();
-        emit receivedRayPumpMessage(command, valid);
-    }
-        break;
-    case CC_CONFIRM_JOBLIMIT_EXCEEDED: case CC_CONFIRM_DAILYJOBLIMIT_EXCEEDED:
-        emit receivedRayPumpMessage(command, result);
-        break;
+    case CC_CONFIRM_AUTH: case CC_CONFIRM_SCENE_SCHEDULED:
+    case CC_CONFIRM_SCENE_READY: case CC_CONFIRM_DOWNLOAD_READY:
     case CC_ERROR_SCENE_NOT_FOUND:
-        emit receivedRayPumpMessage(command, result.value("scene_name"));
-        break;
-    case CC_ERROR_SCENE_TEST_FAILED:
-        if (!result.contains("reason")){
-            uERROR << "cannot find 'reason' value";
-        }
-        emit receivedRayPumpMessage(command, result);
-        break;
     case CC_CONFIRM_GENERAL_INFO: case CC_CONFIRM_IMPORTANT_INFO:
-        emit receivedRayPumpMessage(command, result.value("message"));
-        break;
-    case CC_CONFIRM_QUEUE_STATUS:
+    case CC_CONFIRM_SCENE_TESTING: case CC_CONFIRM_SCENE_RUNNING:
+    case CC_ERROR_SCENE_TEST_FAILED: case CC_CONFIRM_SCENE_PREPARED:
+    case CC_CONFIRM_JOBLIMIT_EXCEEDED: case CC_CONFIRM_DAILYJOBLIMIT_EXCEEDED:
+    case CC_CONFIRM_QUEUE_STATUS: case CC_CONFIRM_QUEUE_PROGRESS:
         emit receivedRayPumpMessage(command, result);
         break;
     default:
