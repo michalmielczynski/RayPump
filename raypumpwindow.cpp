@@ -799,16 +799,16 @@ void RayPumpWindow::assertSynchroDirectories()
     ui->pushButtonRenderPath->setText(tr("Renders folder: %1 (click to change)").arg(Globals::RENDERS_DIRECTORY));
 
     /// @test
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    QString username;
-#ifdef Q_OS_WIN
-    username = env.value("USERNAME");
-#else
-    username = env.value("USER");
-#endif
-
     QDir path(QDir::homePath());
-    Globals::BUFFER_DIRECTORY = path.tempPath() + "/raypump-" + username;
+#ifdef Q_OS_WIN
+    //Windows has non-ASCII usernames, while linux restricts usernames to a small set of characters
+    //non-ASCII paths can't be sent to Blender
+    Globals::BUFFER_DIRECTORY = path.tempPath() + "/raypump";
+#else
+    //Work has to be done to use RayPump inside two users at the same time
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    Globals::BUFFER_DIRECTORY = path.tempPath() + "/raypump-" + env.value("USER");
+#endif
 
     if (!path.mkpath(Globals::BUFFER_DIRECTORY)){
         QMessageBox::critical(0, "RayPump failed", "Failed to create buffer directory" + Globals::BUFFER_DIRECTORY);
