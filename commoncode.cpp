@@ -1,4 +1,4 @@
-/* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
+/* Copyright 2014 michal.mielczynski@gmail.com. All rights reserved.
  *
  *
  * RayPump Client software might be distributed under GNU GENERAL PUBLIC LICENSE
@@ -24,6 +24,6 @@
 bool Globals::SERVER_VIRTUALIZED = false;
 QString Globals::SERVER_HOST_NAME  = ""; // used only if Globals::SERVER_VIRTUALIZED is true
 /// @todo this IP should be read from http://raypump.com/headnode.txt before we actually try to connect
-QString Globals::SERVER_IP  = "185.7.171.251"; // used only if Globals::SERVER_VIRTUALIZED is false
+QString Globals::SERVER_IP  = "185.7.171.203"; // used only if Globals::SERVER_VIRTUALIZED is false
 QString Globals::BUFFER_DIRECTORY = QApplication::applicationDirPath() + "/BUFFER";
 QString Globals::RENDERS_DIRECTORY = "RENDERS";

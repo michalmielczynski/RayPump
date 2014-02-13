@@ -70,10 +70,10 @@ private:
     QList<Command> m_commandBuffer;
     QFileInfo m_rsyncFilePath;
     bool m_synchroInProgress;
+    int m_transferLimit; // KiB (1024 bytes)
     bool m_autorun;
     QByteArray m_accessHash;
     QElapsedTimer m_rsyncTimer;
-    int m_transferLimit; // KiB (1024 bytes)
 
 };
 

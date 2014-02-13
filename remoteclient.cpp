@@ -1,4 +1,4 @@
-/* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
+/* Copyright 2014 michal.mielczynski@gmail.com. All rights reserved.
  *
  *
  * RayPump Client software might be distributed under GNU GENERAL PUBLIC LICENSE
@@ -31,6 +31,31 @@ RemoteClient::RemoteClient(QObject *parent) :
 
     //setupDatabase();
 }
+
+void RemoteClient::getIP()
+{
+    QNetworkAccessManager *networkManager = new QNetworkAccessManager(this);
+    connect(networkManager, SIGNAL(finished(QNetworkReply*)), SLOT(handleNetworkReply(QNetworkReply*)));
+    networkManager->get(QNetworkRequest(QUrl("http://www.raypump.com/rpip?mode=normal")));
+}
+
+bool RemoteClient::handleNetworkReply(QNetworkReply *reply)
+{
+    if (reply->error() != QNetworkReply::NoError){
+        uERROR << "bad reply from rpip server" << reply->errorString();
+        return false;
+    }
+
+    Globals::SERVER_IP = QString::fromUtf8(reply->readAll().data());
+    if(Globals::SERVER_IP.isEmpty()){
+        uERROR << "empty ip address from rpip server. Aborting...";
+        return false;
+    }
+    uINFO << "connecting" << Globals::SERVER_IP;
+    connectRayPump();
+    return true;
+}
+
 
 bool RemoteClient::connectRayPump()
 {
@@ -155,3 +180,4 @@ void RemoteClient::handleError(QAbstractSocket::SocketError error)
     uERROR << "socket error" << error << m_tcpSocket->errorString();
     emit connected(false, m_tcpSocket->errorString());
 }
+

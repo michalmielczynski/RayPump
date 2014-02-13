@@ -1,4 +1,4 @@
-/* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
+/* Copyright 2014 michal.mielczynski@gmail.com. All rights reserved.
  *
  *
  * RayPump Client software might be distributed under GNU GENERAL PUBLIC LICENSE
@@ -33,7 +33,7 @@
 #define uWARNING qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss") << "WARNING: (" << __FUNCTION__ << ")"
 #define uERROR qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss") << "ERROR: (" << __FUNCTION__ << ")"
 
-const static qreal G_VERSION = 0.996f;
+const static qreal G_VERSION = 0.997f;
 const static qreal G_ALLOWED_ADDON_VERSION = 0.995f;
 const static QString G_VERSION_NAME =  "Winter White";
 

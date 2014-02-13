@@ -494,7 +494,10 @@ void RayPumpWindow::on_actionConnect_toggled(bool checked)
             m_trayIcon->showMessage(tr("RayPump Warning"), tr("This username might not work with RayPump (contains spaces, illegal chars, etc.)"), QSystemTrayIcon::Warning);
         }
         ui->statusBar->showMessage(tr("Connecting..."));
-        m_remoteClient->connectRayPump();
+
+        //m_remoteClient->connectRayPump();
+        m_remoteClient->getIP();
+
         if (ui->checkBoxRememberUser->isChecked()){
             SimpleCrypt cryptor(m_simpleCryptKey);
             QSettings settings;
@@ -573,11 +576,6 @@ void RayPumpWindow::setupRsyncWrappers()
     connect(m_rendersTransferManager, SIGNAL(rsyncOutput(QByteArray)), SLOT(handleReadyReadRsyncRendersOutput(QByteArray)));
     connect(m_rendersTransferManager, SIGNAL(finished(bool)), SLOT(handleRsyncRendersFinished(bool)));
 
-//    m_rsyncRendersProcess = new QProcess(this);
-//    m_rsyncRendersProcess->setReadChannel(QProcess::StandardOutput);
-//    m_rsyncRendersProcess->setProcessChannelMode(QProcess::MergedChannels);
-//    connect(m_rsyncRendersProcess, SIGNAL(finished(int,QProcess::ExitStatus)), SLOT(handleRsyncRendersFinished(int,QProcess::ExitStatus)));
-//    connect(m_rsyncRendersProcess, SIGNAL(readyReadStandardOutput()), SLOT(handleReadyReadRsyncRendersOutput()));
 }
 
 void RayPumpWindow::setupLocalServer()
@@ -765,12 +763,12 @@ void RayPumpWindow::handleRenderPointsChanged(int renderPoints)
     if (m_renderPoints < 1){
         m_trayIcon->showMessage("RayPump", tr("No Render Points left"));
     }
-    else if (m_renderPoints < 50){
-        m_trayIcon->showMessage("RayPump", tr("Less than 50 Render Points left - no more commercial jobs can be scheduled"));
+    else if (m_renderPoints < 100){
+        m_trayIcon->showMessage("RayPump", tr("Less than 100 Render Points left - no more commercial jobs can be scheduled"));
     }
-    else if (m_renderPoints < 200){
-        m_trayIcon->showMessage("RayPump", tr("Less than 200 Render Points left"));
-    }
+//    else if (m_renderPoints < 200){
+//        m_trayIcon->showMessage("RayPump", tr("Less than 200 Render Points left"));
+//    }
 }
 
 void RayPumpWindow::handleOtherUserJobProgress(double progress)
@@ -779,9 +777,12 @@ void RayPumpWindow::handleOtherUserJobProgress(double progress)
         return;
     }
 
-    int waitValue = 100 - (progress * 100.0);
-    ui->progressBarRender->setMaximum(100);
-    ui->progressBarRender->setValue(waitValue);
+    int value = (progress * 100.0);
+    int range = 100 * 1+(int)progress;
+    ui->progressBarRender->setVisible(true);
+    ui->progressBarRender->setMaximum(range);
+    ui->progressBarRender->setValue(range-value);
+    uINFO << value << range;
 
     ui->statusBar->showMessage(tr("Awaiting free farm resources"));
 }
@@ -940,7 +941,6 @@ void RayPumpWindow::setJobType(const QString &jobTypeString)
 
 QString RayPumpWindow::formattedStringFromSeconds(int duration)
 {
-    uINFO << duration;
     int seconds = (int) (duration % 60);
     duration /= 60;
     int minutes = (int) (duration % 60);
@@ -1066,7 +1066,7 @@ void RayPumpWindow::on_lineEditUserName_returnPressed()
 
 void RayPumpWindow::on_actionAdd_Render_Points_triggered()
 {
-    QDesktopServices::openUrl(QUrl("http://raypump.com/pro"));
+    QDesktopServices::openUrl(QUrl("http://raypump.com/buy-render-points"));
 }
 
 void RayPumpWindow::on_actionCancel_uploading_triggered()

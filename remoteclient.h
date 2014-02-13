@@ -1,4 +1,4 @@
-/* Copyright 2013 michal.mielczynski@gmail.com. All rights reserved.
+/* Copyright 2014 michal.mielczynski@gmail.com. All rights reserved.
  *
  *
  * RayPump Client software might be distributed under GNU GENERAL PUBLIC LICENSE
@@ -26,6 +26,10 @@
 #include <QTcpSocket>
 #include <QDataStream>
 #include <QHostInfo>
+#include <QNetworkAccessManager>
+#include <QUrl>
+#include <QNetworkRequest>
+#include <QNetworkReply>
 
 #include "commoncode.h"
 #include "json/json.h"
@@ -74,6 +78,7 @@ public:
 #endif
 
     explicit RemoteClient(QObject *parent = 0);
+    void getIP();
     bool connectRayPump();
     void sendRayPumpMessage(CommandCode command, QVariantMap &args);
     inline bool isConnected() { return m_tcpSocket->isOpen(); }
@@ -85,6 +90,7 @@ signals:
 public slots:
     void handleReadyRead();
     void handleError(QAbstractSocket::SocketError error);
+    bool handleNetworkReply(QNetworkReply*reply);
 
 private:
     void setupDatabase(); /// @test
