@@ -212,8 +212,10 @@ void RayPumpWindow::handleRsyncSceneFinished(bool success)
         m_remoteClient->sendRayPumpMessage(CC_REQUEST_SCENE_TRANSFER_COMPLETE, map);
     }
     else{
-        ui->statusBar->showMessage(tr("Failed to send scene"));
-        uERROR << "failed to send scene";
+        QMessageBox msgBox;
+        msgBox.setText(tr("Failed to send scene"));
+        msgBox.setInformativeText(tr("RayPump encounter problems while sending the file. Check <a href=http://www.raypump.com/help/5-faq?&start=2>Known issues for Beta version</a>"));
+        msgBox.setStandardButtons(QMessageBox::Ok);
     }
     ui->progressBar->reset();
     ui->progressBar->setMaximum(0);

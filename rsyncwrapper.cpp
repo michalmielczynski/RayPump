@@ -24,8 +24,8 @@
 RsyncWrapper::RsyncWrapper(QObject *parent) :
     QObject(parent),
     m_synchroInProgress(false),
-    m_transferLimit(0),
-    m_autorun(false)
+    m_autorun(false),
+    m_transferLimit(0)
 {
 #if defined(Q_OS_WIN)
     m_rsyncFilePath = QFileInfo("rsync/rsync.exe");
