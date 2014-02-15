@@ -392,7 +392,7 @@ void RayPumpWindow::handleRayPumpCommand(CommandCode command, const QVariantMap 
     case CC_ERROR_SCENE_NOT_FOUND:
     {
         QString sceneName = arg.value("scene_name").toString();
-        QMessageBox::warning(this, tr("RayPump error"), tr("Failed to start scheduled scene: %1<br><br>Try to re-send your job. If problem presists, please report a bug").arg(sceneName));
+        QMessageBox::warning(this, tr("RayPump error"), tr("Failed to start scheduled scene: %1<br><br>Try to re-send your job. If problem persists, please report a bug").arg(sceneName));
     }
         break;
     case CC_ERROR_SCENE_TEST_FAILED:
@@ -583,7 +583,10 @@ void RayPumpWindow::setupRsyncWrappers()
 void RayPumpWindow::setupLocalServer()
 {
     m_localServer = new LocalServer(this);
-    m_localServer->start();
+    if (!m_localServer->start()) {
+        QMessageBox::warning(this, tr("RayPump message"), tr("Can't create connection for Blender. Maybe another instance of RayPump is running?"));
+        exit(EXIT_FAILURE);
+    }
     connect(m_localServer, SIGNAL(messageReceived(QByteArray)), SLOT(handleLocalMessage(QByteArray)));
     connect(m_localServer, SIGNAL(requestShowWindow()), SLOT(show()));
 }
@@ -1100,7 +1103,10 @@ void RayPumpWindow::on_tableWidget_cellDoubleClicked(int row, int column)
 {
     Q_UNUSED(column);
     /// @todo: open only if the job has already ended
+    //if (ui->tableWidget->item(row, 1))    //it should be saved somewhere when the job has been downloaded, maybe a setData()?
     openRenderFolder(ui->tableWidget->item(row, 0)->data(IR_JOB_PATH).toString());
+    //else
+    //    m_trayIcon->showMessage(tr("RayPump processing"), tr("Please wait until your job is downloaded"), QSystemTrayIcon::Information);
 }
 
 void RayPumpWindow::on_pushButtonCleanUp_clicked()
