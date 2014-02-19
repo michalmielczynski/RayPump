@@ -33,8 +33,8 @@
 #define uWARNING qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss") << "WARNING: (" << __FUNCTION__ << ")"
 #define uERROR qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss") << "ERROR: (" << __FUNCTION__ << ")"
 
-const static qreal G_VERSION = 0.997f;
-const static qreal G_ALLOWED_ADDON_VERSION = 0.995f;
+const static qreal G_VERSION = 0.998f;
+const static qreal G_ALLOWED_ADDON_VERSION = 0.998f;
 const static QString G_VERSION_NAME =  "Winter White";
 
 // global variables

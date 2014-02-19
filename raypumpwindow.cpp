@@ -154,15 +154,10 @@ void RayPumpWindow::handleLocalMessage(const QByteArray &message)
         return;
     }
 
+    QString sceneFileInfo;
+
     foreach (QString key, map.keys()){
-        if (key == "SCHEDULE"){
-            if (!m_sceneTransferManager->isHashValid()){
-                uINFO << "Received job disconnected to the server";
-                m_localServer->sendRetry();
-            } else
-                m_localServer->confirmSceneScheduled(transferScene(map.value(key).toString()));
-        }
-        else if (key == "CONNECTED"){
+        if (key == "CONNECTED"){
             m_status = tr("Blender connected");
         }
         else if (key == "DISCONNECTED"){
@@ -170,7 +165,7 @@ void RayPumpWindow::handleLocalMessage(const QByteArray &message)
             m_status = tr("Blender disconnected");
         }
         else if (key == "FORMAT"){
-            /// @deprecated everything above RayPump Free uses Scene's output format
+            /// @deprecated everything above RayPump Free uses Scene's output format (movie formats are switched back to PNG, tho)
         }
         else if (key == "FRAME_CURRENT"){
             m_currentJob.frameCurrent = map.value(key).toInt();
@@ -196,10 +191,27 @@ void RayPumpWindow::handleLocalMessage(const QByteArray &message)
                 openRenderFolder(m_jobManager->lastReadyRenderPath());
             }
         }
+        else if (key == "VERSION_CYCLE"){
+            m_currentJob.versionCycle = map.value(key).toString();
+            uINFO << m_currentJob.versionCycle;
+        }
+        else if (key == "SCHEDULE"){
+            if (!m_sceneTransferManager->isHashValid()){
+                uINFO << "Received job disconnected to the server";
+                m_localServer->sendRetry();
+            }
+            else{
+                sceneFileInfo = map.value(key).toString();
+            }
+        }
         /// @todo more to come?
         else{
             uERROR << "unhandled command" << key;
         }
+    }
+
+    if (!sceneFileInfo.isEmpty() && m_sceneTransferManager->isHashValid()){
+        m_localServer->confirmSceneScheduled(transferScene(sceneFileInfo));
     }
 }
 
@@ -667,6 +679,7 @@ bool RayPumpWindow::transferScene(const QFileInfo &sceneFileInfo)
     arg["frame_number_start"] = m_currentJob.frameStart;
     arg["frame_number_end"] = m_currentJob.frameEnd;
     arg["job_type"] = m_currentJob.jobType;
+    arg["version_cycle"] = m_currentJob.versionCycle;
     m_remoteClient->sendRayPumpMessage(CC_REQUEST_SCENE_PREPARE, arg);
 
 
@@ -781,9 +794,9 @@ void RayPumpWindow::handleOtherUserJobProgress(double progress)
 
     int value = (progress * 100.0);
     int range = 100 * 1+(int)progress;
-    ui->progressBarRender->setVisible(true);
     ui->progressBarRender->setMaximum(range);
     ui->progressBarRender->setValue(range-value);
+    ui->progressBarRender->setVisible(true);
     uINFO << value << range;
 
     ui->statusBar->showMessage(tr("Awaiting free farm resources"));

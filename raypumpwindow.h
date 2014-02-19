@@ -118,6 +118,7 @@ public:
         int frameStart;
         int frameEnd;
         QStringList externalPaths;
+        QString versionCycle;
     };
 
 public slots:
