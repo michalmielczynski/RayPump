@@ -66,8 +66,8 @@
  *
  *4)
  * Support usage by multiple users (difficulty: unknown)
- * - Opening RayPump inside one user and launching Blender inside another creates a successful
- *   connection, but Linux doesn't allow sending data between them
+ * - Two instances of RayPump cannot be executed inside different users (both can't use port 5005)
+ *   Possible solution: add a port configuration?
  *
  *5)
  * Automatic software upgrade (difficulty: hard)
