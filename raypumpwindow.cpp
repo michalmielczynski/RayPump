@@ -596,8 +596,10 @@ void RayPumpWindow::setupLocalServer()
 {
     m_localServer = new LocalServer(this);
     if (!m_localServer->start()) {
-        QMessageBox::warning(this, tr("RayPump message"), tr("Can't create connection for Blender. Maybe another instance of RayPump is running?"));
-        exit(EXIT_FAILURE);
+        /// @note this doesn't work well under Windows (fails every time RayPump launches). Blender does not have to be running - connection will be made during export anyway
+        //QMessageBox::warning(this, tr("RayPump message"), tr("Can't create connection for Blender. Maybe another instance of RayPump is running?"));
+        //exit(EXIT_FAILURE);
+        return;
     }
     connect(m_localServer, SIGNAL(messageReceived(QByteArray)), SLOT(handleLocalMessage(QByteArray)));
     connect(m_localServer, SIGNAL(requestShowWindow()), SLOT(show()));
